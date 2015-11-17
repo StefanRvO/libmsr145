@@ -6,13 +6,18 @@
 #define MSR_BUAD_RATE 9600
 #define MSR_STOP_BITS boost::asio::serial_port_base::stop_bits::one
 #define MSR_WORD_LENGHT 8
+#
 struct rec_entry
 {
     uint8_t address;
     struct tm time;
     uint16_t lenght;
 };
+struct sample
+{
+    uint32_t RH; //Realative hydration in 1:10000
 
+};
 class MSRDevice
 {
     private:

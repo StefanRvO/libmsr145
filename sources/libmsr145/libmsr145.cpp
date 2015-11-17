@@ -171,9 +171,11 @@ std::vector<rec_entry> MSRDevice::getRecordings()
             //and record the next entry
             next_new_entry = true;
             //set lenght of the entry
-            uint16_t start_addr = rec_addresses.back().address;
-            uint16_t end_addr = address;
-            rec_addresses.back().lenght = start_addr - end_addr + 1;
+            uint16_t end_addr = rec_addresses.back().address;
+            uint16_t start_addr = address;
+            rec_addresses.back().lenght = end_addr - start_addr + 1;
+            rec_addresses.back().address = start_addr; //adjust adress so it contains the start adress.
+
             if(--new_address == 0xFFFF)
             { //if adress underflows, it should underflow to 0x1FFF, which is the highest mem location on the MSR145
                 new_address = 0x1FFF;
@@ -198,16 +200,35 @@ std::vector<uint8_t> MSRDevice::readRecording(rec_entry record)
     //0x8B 0x00 0x00 <address lsb> <address msb> <lenght lsb> <lenght msb>
     uint8_t fetch_command[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
 
-    for(uint16_t cur_addr = record.address - (record.lenght - 1); cur_addr <= record.address; cur_addr++)
+    for(uint16_t i = 0; i < record.lenght; i++)
     {
         //send the fetch command
+        uint16_t cur_addr = record.address + i;
         fetch_command[3] = cur_addr & 0xFF;
         fetch_command[4] = cur_addr >> 8;
         this->sendcommand(fetch_command, sizeof(fetch_command), response, response_size);
 
         //load the data into the vector. ignore first 9 bytes(for now), they are timestamp, etc
-        for(uint16_t i = 1; i < response_size - 1; i++)
-            recordData.push_back(response[i]);
+        if(i == 0)
+        { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
+          //I don't really know what it means yet
+            for(uint16_t j = 9 + 6 * 0xF + 8 ; j < response_size; j++)
+                recordData.push_back(response[j]);
+        }
+        else
+        {
+            for(uint16_t j = 18; j < response_size; j++)
+                recordData.push_back(response[j]);
+        }
+        //each sample is 32 bytes, and consists of  8 individual samples of 4 bytes each
+        //first byte is an id, next 3 are the data
+        //identified id's:
+        //60 -- realative hydration
+        //02 -- T_RH ?? divide by 256 to get the val in C.
+        //10 -- pressure divide by 10 to get val in millibar
+        //70 -- temp. something weird is happening in msb byte.
+
+
     }
     return recordData;
 }
