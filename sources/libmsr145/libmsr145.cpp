@@ -33,10 +33,21 @@ void MSRDevice::sendcommand(uint8_t *command, size_t command_lenght,
     assert(out_lenght == 0 || (out[out_lenght - 1] == calcChecksum(out, out_lenght - 1)));
 }
 
-MSRDevice::MSRDevice(std::string portname)
+void MSRDevice::sendraw(uint8_t *command, size_t command_lenght,
+                            uint8_t *out, size_t out_lenght)
+{
+    write(*(this->port), buffer(command, command_lenght));
+    size_t read_bytes = read(*(this->port), buffer(out, out_lenght), transfer_exactly(out_lenght));
+    assert(read_bytes == out_lenght);
+    assert(out_lenght == 0 || (out[out_lenght - 1] == calcChecksum(out, out_lenght - 1)));
+}
+
+
+MSRDevice::MSRDevice(std::string _portname)
 {
     //open the port and setup baudrate, stop bits and word lenght
-    this->port = new serial_port(ioservice, portname);
+    this->portname = _portname;
+    this->port = new serial_port(ioservice, _portname);
     this->port->set_option(serial_port_base::baud_rate( MSR_BUAD_RATE ));
     this->port->set_option(serial_port_base::stop_bits( MSR_STOP_BITS ));
     this->port->set_option(serial_port_base::character_size( MSR_WORD_LENGHT ));
@@ -239,5 +250,20 @@ std::vector<uint8_t> MSRDevice::readRecording(rec_entry record)
 
 
     }
+    delete[] response;
     return recordData;
+}
+
+void MSRDevice::set_baud230400()
+{
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    uint8_t command_3[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(command_3, sizeof(command_3), response, 0);
+    usleep(10000); //We need to sleep a bit after changeing baud, else we will stall
+    this->port->set_option(serial_port_base::baud_rate( 230400 ));
+    uint8_t command_4[] = {0x87, 0x01, 0x00, 0x01, 0x02, 0x03, 0x04};
+    this->sendcommand(command_4, sizeof(command_4), response, response_size);
+
+
 }

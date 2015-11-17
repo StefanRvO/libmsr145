@@ -32,8 +32,9 @@ class MSRDevice
     private:
         boost::asio::serial_port *port;
         boost::asio::io_service ioservice;
+        std::string portname;
     public:
-        MSRDevice(std::string portname);
+        MSRDevice(std::string _portname);
         ~MSRDevice();
         std::string getSerialNumber();
         std::string getName();
@@ -42,7 +43,10 @@ class MSRDevice
         std::vector<rec_entry> getRecordings(); //only work when recording is not active
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
+        void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         uint8_t calcChecksum(uint8_t *data, size_t lenght);
         std::vector<uint8_t> readRecording(rec_entry record);
+        void set_baud230400();
+
 
 };
