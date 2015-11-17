@@ -21,7 +21,7 @@ int main()
     //}
     std::cout << std::endl;*/
     msr.set_baud230400();
-    auto recordings = msr.getRecordings();
+    auto recordings = msr.getRecordinglist();
     char *time_str = new char[500];
     //std::cout << recordings.size() << std::endl;
     for(auto i : recordings)
@@ -29,20 +29,29 @@ int main()
         strftime(time_str, 500, "%D - %T", &(i.time));
         printf("%04X  %s   %u\n", i.address, time_str, i.lenght);
     }
-    auto data = msr.readRecording(recordings[0]);
-    for(size_t i = 0; i < data.size();)
+    std::vector<sample> samples;
+    //for(uint8_t i = 0; i< recordings.size(); i++)
+    //{
+        samples = msr.getSamples(recordings[0]);
+
+        for(size_t j = 0; j < samples.size(); j++)
+        {
+            if(samples[j].type == sampletype::temp)
+            {
+                printf("%06X\n", samples[j].value);
+            }
+        }
+        //printf("%u\n\n\n", i);
+    //}
+    /*auto rawdata = msr.getRawRecording(recordings[0]);
+    for(size_t i = 0; i < rawdata.size();)
     {
-        //uint32_t test_dat = 0 * data[i + 2];
-        //test_dat = test_dat << 8;
-        //test_dat += data[i + 1];
-        //test_dat = test_dat << 8;
-        //test_dat += data[i + 0];
-        //printf("%u\n", test_dat );
-        //i+=32;
-        for(int j = 0; j < 32 && i < data.size(); j++, i++)
-            printf("%02X ", data[i]);
-        printf("\n");
-    }
+        for(uint8_t j = 0; j < 32 && i < rawdata.size(); j++, i++)
+        {
+            printf("%02X ", rawdata[i]);
+        }
+        printf("\n" );
+    }*/
     //std::cout << data.size() << std::endl;
     //uint8_t command[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
 

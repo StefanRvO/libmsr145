@@ -135,7 +135,30 @@ void MSRDevice::setName(std::string name)
     delete response;
 }
 
-std::vector<rec_entry> MSRDevice::getRecordings()
+rec_entry MSRDevice::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr)
+{
+    rec_entry entry;
+    entry.address = start_addr;
+    entry.lenght = end_addr - start_addr + 1;
+    //the timestamp of the entry is given in seconds since jan 1 2000
+    //they are saved in the folowing parts of the response, ordered with msb first, lsb last
+    //byte 3, byte 7, byte 6, byte 5(first 7 bits)
+    int32_t entry_time_seconds = ((int32_t)response_ptr[2]) << 23;
+    entry_time_seconds += ((int32_t)response_ptr[6]) << 15;
+    entry_time_seconds += ((int32_t)response_ptr[5]) << 7;
+    entry_time_seconds += ((int32_t)response_ptr[4]) >> 1;
+    //setup the tm struct
+    entry.time.tm_year = 100; //the msr count from 2000, not 1900
+    entry.time.tm_mon = 0;
+    entry.time.tm_mday = 1;
+    entry.time.tm_hour = 0;
+    entry.time.tm_min = 0;
+    entry.time.tm_sec = entry_time_seconds;
+    entry.time.tm_isdst = -1;
+    mktime(&(entry.time));
+    return entry;
+}
+std::vector<rec_entry> MSRDevice::getRecordinglist()
 {
     std::vector<rec_entry> rec_addresses;
     uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -143,74 +166,52 @@ std::vector<rec_entry> MSRDevice::getRecordings()
     uint8_t *response = new uint8_t[response_size];
     this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
-    uint16_t address = (response[4] << 8) + response[3];
-
+    uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
+    uint16_t cur_address = end_address; //the adress we are going to request in the next command
+    uint16_t start_address = end_address;
     //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
     response_size = 10;
     delete[] response;
     response = new uint8_t[10];
-
+    rec_entry new_entry;
     //this command fetches the data at the adress given by byte 4 and 5
-    uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, (uint8_t)(address & 0xFF), (uint8_t)(address >> 8), 0x08, 0x00};
-    bool next_new_entry = true;
-    while(address != 0x1FFF)
+    uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, (uint8_t)(cur_address & 0xFF), (uint8_t)(cur_address >> 8), 0x08, 0x00};
+    while(cur_address != 0x1FFF)
     {
         this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
         //adress to next entry is placed in byte 8 and 9
-
-        uint16_t new_address = (response[8] << 8) + response[7];
-        if(new_address == 0xFFFF) break; //if next adress it this, we are done
-        if(next_new_entry == true)
+        switch(response[1])
         {
-            next_new_entry = false;
-            rec_entry new_entry;
-            new_entry.address = address;
-            //the timestamp of the entry is given in seconds since jan 1 2000
-            //they are saved in the folowing parts of the response, ordered with msb first, lsb last
-            //byte 3, byte 7, byte 6, byte 5(first 7 bits)
-            int32_t entry_time_seconds = ((int32_t)response[2]) << 23;
-            entry_time_seconds += ((int32_t)response[6]) << 15;
-            entry_time_seconds += ((int32_t)response[5]) << 7;
-            entry_time_seconds += ((int32_t)response[4]) >> 1;
-            //setup the tm struct
-            new_entry.time.tm_year = 100; //the msr count from 2000, not 1900
-            new_entry.time.tm_mon = 0;
-            new_entry.time.tm_mday = 1;
-            new_entry.time.tm_hour = 0;
-            new_entry.time.tm_min = 0;
-            new_entry.time.tm_sec = entry_time_seconds;
-            new_entry.time.tm_isdst = -1;
-            mktime(&(new_entry.time));
-            rec_addresses.push_back(new_entry);
+            case 0x01: //this means that what we requested was not the first page of the entry
+                start_address = (response[8] << 8) + response[7]; //these bytes hold the adress of the first page in the entry
+                cur_address = start_address;
+                break;
+            case 0x21: //this means that what we requested was the last page of the entry
+                //save the entry
+                new_entry = create_rec_entry(response, start_address, end_address);
+                rec_addresses.push_back(new_entry);
+                //the next entrys end adress will be this ones start minus 1
+                end_address = start_address - 1;
+                if(end_address == 0xFFFF)
+                { //if adress underflows, it should underflow to 0x1FFF, which is the highest mem location on the MSR145
+                    end_address = 0x1FFF;
+                }
+                start_address = end_address; //set start adress as the same as end, so we don't fuckup on entries of lenght 1.
+                cur_address = end_address; //request next entrys end adress next
+                break;
+            default:
+                printf("ERROR!!!!!"); //this should never happend
+                break;
         }
 
-        if(new_address == address)
-        {
-            //if next adress is the same as requested
-            //it means that we should count current adress down by one
-            //and record the next entry
-            next_new_entry = true;
-            //set lenght of the entry
-            uint16_t end_addr = rec_addresses.back().address;
-            uint16_t start_addr = address;
-            rec_addresses.back().lenght = end_addr - start_addr + 1;
-            rec_addresses.back().address = start_addr; //adjust adress so it contains the start adress.
-
-            if(--new_address == 0xFFFF)
-            { //if adress underflows, it should underflow to 0x1FFF, which is the highest mem location on the MSR145
-                new_address = 0x1FFF;
-            }
-        }
-
-        address = new_address;
-        next_placement_get[3] = address & 0xFF;
-        next_placement_get[4] = address >> 8;
+        next_placement_get[3] = cur_address & 0xFF;
+        next_placement_get[4] = cur_address >> 8;
     }
     delete[] response;
     return rec_addresses;
 }
 
-std::vector<uint8_t> MSRDevice::readRecording(rec_entry record)
+std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
 { //recordings are read from the smallest memory location to the largest
     std::vector<uint8_t> recordData;
     size_t response_size = 0x0422;
@@ -232,7 +233,7 @@ std::vector<uint8_t> MSRDevice::readRecording(rec_entry record)
         if(i == 0)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
-            for(uint16_t j = 9 + 6 * 0xF + 8 ; j < response_size; j++)
+            for(uint16_t j = 0 +9 + 6 * 0xF + 8 ; j < response_size; j++)
                 recordData.push_back(response[j]);
         }
         else
@@ -240,30 +241,74 @@ std::vector<uint8_t> MSRDevice::readRecording(rec_entry record)
             for(uint16_t j = 18; j < response_size; j++)
                 recordData.push_back(response[j]);
         }
-        //each sample is 32 bytes, and consists of  8 individual samples of 4 bytes each
-        //first byte is an id, next 3 are the data
-        //identified id's:
-        //60 -- realative hydration
-        //02 -- T_RH ?? divide by 256 to get the val in C.
-        //10 -- pressure divide by 10 to get val in millibar
-        //70 -- temp. something weird is happening in msb byte.
-
 
     }
     delete[] response;
     return recordData;
 }
 
+std::vector<sample> MSRDevice::getSamples(rec_entry record)
+{
+    std::vector<sample> samples;
+    auto rawdata = this->getRawRecording(record);
+    //run through the raw data and convert it to samples
+    for(size_t i = 0; i < rawdata.size(); i += 4)
+    {
+        auto cur_sample = convertToSample(rawdata.data() + i);
+        if(cur_sample.type == sampletype::end) break;
+        samples.push_back(cur_sample);
+    }
+    return samples;
+}
+sample MSRDevice::convertToSample(uint8_t *sample_ptr)
+{   //convert the 4 bytes pointed to by sample_ptr into the sample struct
+    //the first 3 bytes are the sample data. however, not all types use all the bytes
+    //some part of it is used for something else.
+    sample this_sample;
+    this_sample.type = (sampletype)sample_ptr[3];
+
+    switch(this_sample.type)
+    {
+        case sampletype::pressure:
+        case sampletype::rel_hydro:
+            this_sample.value = (sample_ptr[1] << 8) + sample_ptr[0];
+            break;
+
+        case sampletype::temp_alt2:
+        case sampletype::temp_alt0:
+        case sampletype::temp_alt1:
+            this_sample.value = (sample_ptr[1] << 8) + sample_ptr[0];
+            this_sample.type = sampletype::temp;
+            break;
+        case sampletype::T_rel_hydro:
+        case sampletype::ext1:
+        case sampletype::ext2:
+        case sampletype::ext3:
+        case sampletype::ext4:
+        case sampletype::end:
+        case sampletype::unknown1:
+        case sampletype::unknown2:
+        case sampletype::unknown3:
+
+            this_sample.value = sample_ptr[2];
+            this_sample.value <<= 8;
+            this_sample.value += sample_ptr[1];
+            this_sample.value <<= 8;
+            this_sample.value += sample_ptr[0];
+            break;
+        default:
+            printf("Unknown type: %02X\n", this_sample.type);
+            break;
+        assert(this_sample.type != sampletype::end);
+    }
+
+
+    return this_sample;
+}
 void MSRDevice::set_baud230400()
 {
-    size_t response_size = 8;
-    uint8_t *response = new uint8_t[response_size];
     uint8_t command_3[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(command_3, sizeof(command_3), response, 0);
+    this->sendcommand(command_3, sizeof(command_3), nullptr, 0);
     usleep(10000); //We need to sleep a bit after changeing baud, else we will stall
     this->port->set_option(serial_port_base::baud_rate( 230400 ));
-    uint8_t command_4[] = {0x87, 0x01, 0x00, 0x01, 0x02, 0x03, 0x04};
-    this->sendcommand(command_4, sizeof(command_4), response, response_size);
-
-
 }
