@@ -167,6 +167,7 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
     this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
     uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
+
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
     uint16_t start_address = end_address;
     //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
@@ -183,7 +184,7 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
         switch(response[1])
         {
             case 0x01: //this means that what we requested was not the first page of the entry
-                start_address = (response[8] << 8) + response[7]; //these bytes hold the adress of the first page in the entry
+                start_address = (response[8] <<  8) + response[7]; //these bytes hold the adress of the first page in the entry
                 cur_address = start_address;
                 break;
             case 0x21: //this means that what we requested was the last page of the entry
@@ -233,7 +234,7 @@ std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
         if(i == 0)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
-            for(uint16_t j = 0 +9 + 6 * 0xF + 8 ; j < response_size; j++)
+            for(uint16_t j = 0 +9 + 6 * 0xF + 2 ; j < response_size; j++)
                 recordData.push_back(response[j]);
         }
         else
@@ -241,7 +242,6 @@ std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
             for(uint16_t j = 18; j < response_size; j++)
                 recordData.push_back(response[j]);
         }
-
     }
     delete[] response;
     return recordData;
@@ -251,64 +251,117 @@ std::vector<sample> MSRDevice::getSamples(rec_entry record)
 {
     std::vector<sample> samples;
     auto rawdata = this->getRawRecording(record);
+    uint64_t timestamp = 0; //time since start of record in 1/512 seconds
     //run through the raw data and convert it to samples
     for(size_t i = 0; i < rawdata.size(); i += 4)
     {
-        auto cur_sample = convertToSample(rawdata.data() + i);
+        auto cur_sample = convertToSample(rawdata.data() + i, &timestamp);
         if(cur_sample.type == sampletype::end) break;
         samples.push_back(cur_sample);
     }
     return samples;
 }
-sample MSRDevice::convertToSample(uint8_t *sample_ptr)
+sample MSRDevice::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
 {   //convert the 4 bytes pointed to by sample_ptr into the sample struct
-    //the first 3 bytes are the sample data. however, not all types use all the bytes
+    //the last 3 bytes are the sample data. however, not all types use all the bytes
     //some part of it is used for something else.
     sample this_sample;
-    this_sample.type = (sampletype)sample_ptr[3];
+    this_sample.type = (sampletype)(sample_ptr[1] >> 4);
+    this_sample.rawsample = (sample_ptr[0] << 24) +(sample_ptr[1] << 16) + (sample_ptr[2] << 8) + sample_ptr[3];
+    //check for end
+    if(sample_ptr[0] == 0xFF && sample_ptr[1] == 0xFF && sample_ptr[2] == 0xFF && sample_ptr[3] == 0xFF)
+        this_sample.type = sampletype::end;
+
 
     switch(this_sample.type)
     {
+        case sampletype::T_pressure:
         case sampletype::pressure:
-        case sampletype::rel_hydro:
-            this_sample.value = (sample_ptr[1] << 8) + sample_ptr[0];
-            break;
-
-        case sampletype::temp_alt2:
-        case sampletype::temp_alt0:
-        case sampletype::temp_alt1:
-            this_sample.value = (sample_ptr[1] << 8) + sample_ptr[0];
-            this_sample.type = sampletype::temp;
-            break;
-        case sampletype::T_rel_hydro:
+        case sampletype::T_humidity:
+        case sampletype::humidity:
+        case sampletype::bat:
         case sampletype::ext1:
         case sampletype::ext2:
         case sampletype::ext3:
         case sampletype::ext4:
-        case sampletype::end:
-        case sampletype::unknown1:
-        case sampletype::unknown2:
-        case sampletype::unknown3:
-
-            this_sample.value = sample_ptr[2];
-            this_sample.value <<= 8;
-            this_sample.value += sample_ptr[1];
-            this_sample.value <<= 8;
-            this_sample.value += sample_ptr[0];
+        {
+            //capture the sample value
+            this_sample.value = (sample_ptr[3] << 8) + sample_ptr[2];
+            //grab time change
+            //time is the four lowest bits of byte 2, and all of byte 1
+            uint16_t time_bits = (sample_ptr[1] & 0x0F);
+            time_bits <<= 8;
+            time_bits += sample_ptr[0];
+            //the 5'th (highest) bit is not actually a part of the time.
+            //it's a flag. If set, the time is in seconds, else it's in 1/512 seconds.
+            //There is still something a bit wrong with this part.
+            if(time_bits & 0x0800)
+                *total_time += (time_bits & 0x07FF) * 512;
+            else
+                *total_time += (time_bits & 0x07FF);
             break;
+        }
+        case sampletype::timestamp:
+        {
+            //this is a special type, which is used when the timediff can't fit into the normal sample
+            //the time is held in byte 3 and 4, and is in 1/2 seconds.
+            //this however means that it can only hold about 9 hours.
+            //it need to be checked what happens with larger timediffs
+            uint32_t timediff = (sample_ptr[3] << 8) + sample_ptr[2];
+            timediff *= 256; //the uint of total_time is 1/512 seconds
+            *total_time += timediff;
+            break;
+        }
         default:
             printf("Unknown type: %02X\n", this_sample.type);
+            this_sample.value = (sample_ptr[3] << 8) + sample_ptr[2];
             break;
-        assert(this_sample.type != sampletype::end);
+        case end:
+            break;
     }
-
+    this_sample.timestamp = *total_time;
 
     return this_sample;
 }
 void MSRDevice::set_baud230400()
 {
-    uint8_t command_3[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(command_3, sizeof(command_3), nullptr, 0);
+    uint8_t command[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(command, sizeof(command), nullptr, 0);
     usleep(10000); //We need to sleep a bit after changeing baud, else we will stall
     this->port->set_option(serial_port_base::baud_rate( 230400 ));
+}
+
+void MSRDevice::updateSensors()
+{
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+
+    //the fetch command. Format is:
+    //0x8B 0x00 0x00 <address lsb> <address msb> <lenght lsb> <lenght msb>
+    uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
+    this->sendcommand(command, sizeof(command), response, response_size);
+    delete[] response;
+}
+void MSRDevice::getSensorData()
+{
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    uint8_t fetch_1[] = {0x82, 0x02, 0x03, 0x04, 0x05, 0x00, 0x00};
+    uint8_t fetch_2[] = {0x82, 0x02, 0x06, 0x07, 0x08, 0x00, 0x00};
+    uint8_t fetch_3[] = {0x82, 0x02, 0x09, 0x0A, 0x0B, 0x00, 0x00};
+    uint8_t fetch_4[] = {0x82, 0x02, 0x0C, 0x0D, 0x0E, 0x00, 0x00};
+    this->sendcommand(fetch_1, sizeof(fetch_1), response, response_size);
+    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
+    printf("\n");
+    this->sendcommand(fetch_2, sizeof(fetch_2), response, response_size);
+    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
+    printf("\n");
+    this->sendcommand(fetch_3, sizeof(fetch_3), response, response_size);
+    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
+    printf("\n");
+    this->sendcommand(fetch_4, sizeof(fetch_4), response, response_size);
+    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
+    printf("\n");
+
+
 }

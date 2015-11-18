@@ -18,26 +18,22 @@
 
 enum sampletype
 {
-    unknown1 = 0x00,
-    unknown2 = 0xE0,
-    unknown3 = 0x50,
-    rel_hydro = 0x60, //verified
-    T_rel_hydro = 0x02, //verified
-    temp = 0x111/*not a real ID, but all of the temps are set to this when downloading samples*/,
-    temp_alt0 = 0x57, //verified
-    temp_alt1 = 0x70, //verified
-    temp_alt2 = 0x77, //verified, it's however very strange that there is three id's for temp-
-    pressure = 0x10, //Verified
-    ext1 = 0xA0,
-    ext2 = 0xB0,
-    ext3 = 0xC0,
-    ext4 = 0xD0,
-    end = 0xFF,
+    pressure = 0x0,
+    T_pressure = 0x1,
+    T_humidity = 0x5,
+    humidity = 0x6,
+    bat = 0xE,
+    ext1 = 0xA,
+    ext2 = 0xB,
+    ext3 = 0xC,
+    ext4 = 0xD,
+    timestamp = 0xF,
+    end = 0xFFFF,
 };
 
 struct rec_entry
 {
-    uint8_t address;
+    uint16_t address;
     struct tm time;
     uint16_t lenght;
 };
@@ -45,7 +41,9 @@ struct rec_entry
 struct sample
 {
     sampletype type;
-    uint32_t value;
+    int16_t value;
+    uint64_t timestamp; //this is the time since the start of the recording in 1/512 seconds
+    uint32_t rawsample; //for debugging
 };
 
 class MSRDevice
@@ -69,7 +67,10 @@ class MSRDevice
         uint8_t calcChecksum(uint8_t *data, size_t lenght);
         std::vector<uint8_t> getRawRecording(rec_entry record);
         void set_baud230400();
-        sample convertToSample(uint8_t *sample_ptr);
+        sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);
         rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr);
+        void updateSensors();
+        void getSensorData();
+
 
 };
