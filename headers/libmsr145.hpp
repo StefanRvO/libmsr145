@@ -26,7 +26,7 @@ enum sampletype
     ext1 = 0xA,
     ext2 = 0xB,
     ext3 = 0xC,
-    ext4 = 0xD,
+    ext4 = 0x7,
     timestamp = 0xF,
     end = 0xFFFF,
 };

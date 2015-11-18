@@ -222,7 +222,7 @@ std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
     //0x8B 0x00 0x00 <address lsb> <address msb> <lenght lsb> <lenght msb>
     uint8_t fetch_command[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
 
-    for(uint16_t i = 0; i < record.lenght; i++)
+    for(uint16_t i = 1; i < record.lenght; i++)
     {
         //send the fetch command
         uint16_t cur_addr = record.address + i;
@@ -234,12 +234,12 @@ std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
         if(i == 0)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
-            for(uint16_t j = 0 +9 + 6 * 0xF + 2 ; j < response_size; j++)
+            for(uint16_t j = 0 +9 + 6 * 0xF + 2 ; j < response_size - 1; j++)
                 recordData.push_back(response[j]);
         }
         else
         {
-            for(uint16_t j = 18; j < response_size; j++)
+            for(uint16_t j = 17; j < response_size - 1; j++)
                 recordData.push_back(response[j]);
         }
     }

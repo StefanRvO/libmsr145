@@ -44,7 +44,7 @@ int main()
         }
         //printf("%u\n\n\n", i);
     //}*/
-    /*auto rawdata = msr.getRawRecording(recordings[0]);
+    /*auto rawdata = msr.getRawRecording(recordings[28]);
     for(size_t i = 0; i < rawdata.size();)
     {
         for(uint8_t j = 0; j < 4 && i < rawdata.size(); j++, i++)
