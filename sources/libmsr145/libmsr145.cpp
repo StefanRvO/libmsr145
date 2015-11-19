@@ -226,7 +226,7 @@ std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
     //0x8B 0x00 0x00 <address lsb> <address msb> <lenght lsb> <lenght msb>
     uint8_t fetch_command[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
 
-    for(uint16_t i = 1; i < record.lenght; i++)
+    for(uint16_t i = 0; i < record.lenght; i++)
     {
         //send the fetch command
         uint16_t cur_addr = record.address + i;
@@ -310,10 +310,8 @@ sample MSRDevice::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
         case sampletype::timestamp:
         {
             //this is a special type, which is used when the timediff can't fit into the normal sample
-            //the time is held in byte 3 and 4, and is in 1/2 seconds.
-            //this however means that it can only hold about 9 hours.
-            //it need to be checked what happens with larger timediffs
-            uint32_t timediff = (sample_ptr[3] << 8) + sample_ptr[2];
+            //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
+            uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
             timediff *= 256; //the unit of total_time is 1/512 seconds
             *total_time += timediff;
             break;

@@ -22,7 +22,7 @@ int main()
     //}
     std::cout << std::endl;*/
     msr.set_baud(230400);
-    /*auto recordings = msr.getRecordinglist();
+    auto recordings = msr.getRecordinglist();
     char *time_str = new char[500];
     //std::cout << recordings.size() << std::endl;
     int k = 0;
@@ -30,21 +30,22 @@ int main()
     {
         strftime(time_str, 500, "%D - %T", &(i.time));
         printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.lenght);
-    }*/
-    //std::vector<sample> samples;
+    }
+    std::vector<sample> samples;
     //for(uint8_t i = 0; i< recordings.size(); i++)
     //{
-        /*samples = msr.getSamples(recordings[28]);
+        samples = msr.getSamples(recordings[0]);
         for(size_t j = 0; j < samples.size(); j++)
         {
-            if(samples[j].type == sampletype::humidity)
+            //if(samples[j].type == sampletype::humidity)
             {
                 printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / 512.);
             }
-        }*/
+        }
         //printf("%u\n\n\n", i);
     //}*/
-    /*auto rawdata = msr.getRawRecording(recordings[28]);
+    /*auto rawdata = msr.getRawRecording(recordings[0]);
+    std::cout << rawdata.size();
     for(size_t i = 0; i < rawdata.size();)
     {
         for(uint8_t j = 0; j < 4 && i < rawdata.size(); j++, i++)
@@ -60,12 +61,12 @@ int main()
     //uint8_t command[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
 
     //printf("%02X\n", msr.calcChecksum(command, sizeof(command)));
-    int16_t * returnvals = new int16_t[3];
+    /*int16_t * returnvals = new int16_t[3];
     while(1)
     {
         msr.updateSensors();
         msr.getSensorData(returnvals, sampletype::pressure, sampletype::humidity, sampletype::T_pressure);
         for(uint8_t i = 0; i < 3; i++) printf("%d\n", returnvals[i]);
-    }
+    }*/
     msr.set_baud(9600);
 }
