@@ -158,7 +158,6 @@ rec_entry MSRDevice::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr
     mktime(&(entry.time));
     return entry;
 }
-
 std::vector<rec_entry> MSRDevice::getRecordinglist()
 {
     std::vector<rec_entry> rec_addresses;
@@ -167,23 +166,52 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
     uint8_t *response = new uint8_t[response_size];
     this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
-    bool recording_active = (response[3] & (1 << 4)); //this bit defines if the device is currently recording
-    if(recording_active)
-        {};
-
     uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
     uint16_t start_address = end_address;
-    //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
+    uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00};
+
+    bool recording_active = (response[1] == 0x83); //this byte defines if the device is currently recording
     response_size = 10;
     delete[] response;
     response = new uint8_t[10];
+
+    if(recording_active)
+    {
+        uint8_t active_recording_get[] = {0x8B, 0x00, 0x01, 0x00, 0x00, 0x08, 0x00};
+        this->sendcommand(active_recording_get, sizeof(active_recording_get), response, response_size);
+        for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
+        printf("\n");
+        cur_address = (response[8] <<  8) + response[7];
+        next_placement_get[3] = cur_address & 0xFF;
+        next_placement_get[4] = cur_address >> 8;
+        if(response[1] == 0x01)
+        {
+            this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
+            for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
+            printf("\n");
+        }
+        start_address = (response[8] <<  8) + response[7];
+        rec_entry first_entry = create_rec_entry(response, start_address, end_address + 1);
+        rec_addresses.push_back(first_entry);
+        start_address--;
+        if(start_address == 0xFFFF)
+        { //if adress underflows, it should underflow to 0x1FFF, which is the highest mem location on the MSR145
+            start_address = 0x1FFF;
+        }
+        cur_address = start_address;
+        end_address = start_address;
+    }
+    //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
     rec_entry new_entry;
     //this command fetches the data at the adress given by byte 4 and 5
-    uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, (uint8_t)(cur_address & 0xFF), (uint8_t)(cur_address >> 8), 0x08, 0x00};
+    next_placement_get[3] = cur_address & 0xFF;
+    next_placement_get[4] = cur_address >> 8;
     while(cur_address != 0x1FFF)
     {
         this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
+        for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
+        printf("\n");
         //adress to next entry is placed in byte 8 and 9
         switch(response[1])
         {
@@ -205,7 +233,7 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
                 cur_address = end_address; //request next entrys end adress next
                 break;
             default:
-                printf("ERROR!!!!!"); //this should never happend
+                printf("ERROR!!!!!\n"); //this should never happend
                 break;
         }
 

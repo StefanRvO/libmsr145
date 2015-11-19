@@ -62,6 +62,7 @@ class MSRDevice
         void setName(std::string name);
         std::vector<rec_entry> getRecordinglist(); //only work when recording is not active
         std::vector<sample> getSamples(rec_entry record);
+        void getfirstRecord(uint8_t *response, std::vector<rec_entry> *rec_addresses);
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
