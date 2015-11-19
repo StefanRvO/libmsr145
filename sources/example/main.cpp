@@ -43,7 +43,7 @@ int main()
         }*/
         //printf("%u\n\n\n", i);
     //}*/
-    msr.set_baud(230400);
+    /*msr.set_baud(230400);
     auto rawdata = msr.getRawRecording(recordings[0]);
     std::cout << rawdata.size();
     for(size_t i = 0; i < rawdata.size();)
@@ -56,19 +56,19 @@ int main()
         }
         //if( rawdata[ i - 1] == 0x10)
         printf("\n" );
-    }
+    }*/
     //std::cout << data.size() << std::endl;
     //uint8_t command[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
 
     //printf("%02X\n", msr.calcChecksum(command, sizeof(command)));
-    /*int16_t * returnvals = new int16_t[3];
+    int16_t * returnvals = new int16_t[3];
 
     while(1)
     {
         msr.updateSensors();
         msr.getSensorData(returnvals, sampletype::pressure, sampletype::humidity, sampletype::T_pressure);
         for(uint8_t i = 0; i < 3; i++) printf("%d\n", returnvals[i]);
-    }*/
+    }
     /*uint8_t *r = new uint8_t[8];
     uint8_t command[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
     while(1)

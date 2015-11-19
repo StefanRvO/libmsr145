@@ -192,7 +192,9 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
             printf("\n");
         }
         start_address = (response[8] <<  8) + response[7];
-        rec_entry first_entry = create_rec_entry(response, start_address, end_address + 1);
+        if(++end_address == 0x2000)
+            end_address = 0x0000;
+        rec_entry first_entry = create_rec_entry(response, start_address, end_address);
         rec_addresses.push_back(first_entry);
         start_address--;
         if(start_address == 0xFFFF)
