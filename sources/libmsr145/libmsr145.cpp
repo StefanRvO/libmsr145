@@ -158,6 +158,7 @@ rec_entry MSRDevice::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr
     mktime(&(entry.time));
     return entry;
 }
+
 std::vector<rec_entry> MSRDevice::getRecordinglist()
 {
     std::vector<rec_entry> rec_addresses;
@@ -166,8 +167,11 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
     uint8_t *response = new uint8_t[response_size];
     this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
-    uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
+    bool recording_active = (response[3] & (1 << 4)); //this bit defines if the device is currently recording
+    if(recording_active)
+        {};
 
+    uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
     uint16_t start_address = end_address;
     //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
@@ -187,7 +191,7 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
                 start_address = (response[8] <<  8) + response[7]; //these bytes hold the adress of the first page in the entry
                 cur_address = start_address;
                 break;
-            case 0x21: //this means that what we requested was the last page of the entry
+            case 0x21: //this means that what we requested was the first page of the entry
                 //save the entry
                 new_entry = create_rec_entry(response, start_address, end_address);
                 rec_addresses.push_back(new_entry);
@@ -235,7 +239,9 @@ std::vector<uint8_t> MSRDevice::getRawRecording(rec_entry record)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
             for(uint16_t j = 0 +9 + 6 * 0xF + 2 ; j < response_size - 1; j++)
+            {
                 recordData.push_back(response[j]);
+            }
         }
         else
         {
@@ -308,7 +314,7 @@ sample MSRDevice::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
             //this however means that it can only hold about 9 hours.
             //it need to be checked what happens with larger timediffs
             uint32_t timediff = (sample_ptr[3] << 8) + sample_ptr[2];
-            timediff *= 256; //the uint of total_time is 1/512 seconds
+            timediff *= 256; //the unit of total_time is 1/512 seconds
             *total_time += timediff;
             break;
         }
@@ -323,12 +329,38 @@ sample MSRDevice::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
 
     return this_sample;
 }
-void MSRDevice::set_baud230400()
+void MSRDevice::set_baud(uint32_t baudrate)
 {
-    uint8_t command[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
+    uint8_t baudbyte;
+    switch(baudrate)
+    {
+        case 9600:
+            baudbyte = 0x00;
+            break;
+        case 19200:
+            baudbyte = 0x01;
+            break;
+        case 38400:
+            baudbyte = 0x02;
+            break;
+        case 57600:
+            baudbyte = 0x03;
+            break;
+        case 115200:
+            baudbyte = 0x04;
+            break;
+        case 230400:
+            baudbyte = 0x05;
+            break;
+        default:
+            printf("%d is not a valid baudrate.\n", baudrate);
+            return;
+
+    }
+    uint8_t command[] = {0x85, 0x01, baudbyte, 0x00, 0x00, 0x00, 0x00};
     this->sendcommand(command, sizeof(command), nullptr, 0);
-    usleep(10000); //We need to sleep a bit after changeing baud, else we will stall
-    this->port->set_option(serial_port_base::baud_rate( 230400 ));
+    usleep(20000); //We need to sleep a bit after changeing baud, else we will stall
+    this->port->set_option(serial_port_base::baud_rate( baudrate ));
 }
 
 void MSRDevice::updateSensors()
@@ -341,27 +373,16 @@ void MSRDevice::updateSensors()
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
     this->sendcommand(command, sizeof(command), response, response_size);
     delete[] response;
+    usleep(20000); //needed to prevent staaling when doing many succesive calls
 }
-void MSRDevice::getSensorData()
+void MSRDevice::getSensorData(int16_t *returnvalues, sampletype type1, sampletype type2, sampletype type3)
 {
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    uint8_t fetch_1[] = {0x82, 0x02, 0x03, 0x04, 0x05, 0x00, 0x00};
-    uint8_t fetch_2[] = {0x82, 0x02, 0x06, 0x07, 0x08, 0x00, 0x00};
-    uint8_t fetch_3[] = {0x82, 0x02, 0x09, 0x0A, 0x0B, 0x00, 0x00};
-    uint8_t fetch_4[] = {0x82, 0x02, 0x0C, 0x0D, 0x0E, 0x00, 0x00};
-    this->sendcommand(fetch_1, sizeof(fetch_1), response, response_size);
-    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
-    printf("\n");
-    this->sendcommand(fetch_2, sizeof(fetch_2), response, response_size);
-    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
-    printf("\n");
-    this->sendcommand(fetch_3, sizeof(fetch_3), response, response_size);
-    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
-    printf("\n");
-    this->sendcommand(fetch_4, sizeof(fetch_4), response, response_size);
-    for(uint8_t i = 0; i < response_size; i++) printf("%02X ", response[i]);
-    printf("\n");
-
-
+    uint8_t fetch_data[] = {0x82, 0x02, (uint8_t)type1, (uint8_t)type2, (uint8_t)type3, 0x00, 0x00};
+    this->sendcommand(fetch_data, sizeof(fetch_data), response, response_size);
+    if(type1 != sampletype::none) returnvalues[0] = response[1] + (response[2] << 8);
+    if(type2 != sampletype::none) returnvalues[1] = response[3] + (response[4] << 8);
+    if(type3 != sampletype::none) returnvalues[2] = response[5] + (response[6] << 8);
+    usleep(20000); //needed to prevent staaling when doing many succesive calls
 }
