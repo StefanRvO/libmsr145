@@ -21,6 +21,8 @@ int main()
         std::cout << std::endl;
     //}
     std::cout << std::endl;*/
+    msr.stopRecording();
+    usleep(1000000);
     auto recordings = msr.getRecordinglist();
     char *time_str = new char[500];
     //std::cout << recordings.size() << std::endl;
@@ -30,17 +32,20 @@ int main()
         strftime(time_str, 500, "%D - %T", &(i.time));
         printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.lenght);
     }
-    //std::vector<sample> samples;
+    msr.set_baud(230400);
+
+    std::vector<sample> samples;
     //for(uint8_t i = 0; i< recordings.size(); i++)
     //{
-        /*samples = msr.getSamples(recordings[0]);
+        samples = msr.getSamples(recordings[0]);
         for(size_t j = 0; j < samples.size(); j++)
         {
             //if(samples[j].type == sampletype::humidity)
             {
                 printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / 512.);
             }
-        }*/
+        }
+    msr.set_baud(9600);
         //printf("%u\n\n\n", i);
     //}*/
     /*msr.set_baud(230400);
@@ -61,21 +66,37 @@ int main()
     //uint8_t command[] = {0x85, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00};
 
     //printf("%02X\n", msr.calcChecksum(command, sizeof(command)));
-    int16_t * returnvals = new int16_t[3];
+    /*int16_t * returnvals = new int16_t[3];
 
     while(1)
     {
         msr.updateSensors();
         msr.getSensorData(returnvals, sampletype::pressure, sampletype::humidity, sampletype::T_pressure);
         for(uint8_t i = 0; i < 3; i++) printf("%d\n", returnvals[i]);
-    }
+    }*/
     /*uint8_t *r = new uint8_t[8];
-    uint8_t command[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    while(1)
+    uint8_t command[] =     {0x88, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t command2[] =    {0x88, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00};
     {
+        msr.sendcommand(command2, sizeof(command2), r, 8);
         msr.sendcommand(command, sizeof(command), r, 8);
         for(uint8_t i = 0; i < 8; i++) printf("%02X ", r[i]);
         printf("\n");
     }*/
-    msr.set_baud(9600);
+    msr.setTime();
+    struct tm *timeset;
+    time_t rawtime;
+    time(&rawtime);
+    timeset = localtime(&rawtime);
+    timeset->tm_min += 1;
+    mktime(timeset);
+
+    msr.start_recording( startcondition::time_stop, nullptr, timeset);
+    msr.setBlinkRate(400);
+
+    /*char *time_str = new char[500];
+    auto t = msr.getTime();
+    strftime(time_str, 500, "%D - %T", &t);
+    std::cout << time_str << std::endl;
+    msr.set_baud(9600);*/
 }

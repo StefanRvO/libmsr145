@@ -17,7 +17,12 @@ This is very much a work in progress, and very few things are working yet.
 * Read Serial number
 * List recordings on device
 * Read current time of device
+* Set time on device
 * Calculation of 8-bit CRC checksum used by the protocol
-
+* Read samples from recording (not 100% working when reading an active record)
+* Setting blink interval of blue LED
+* Stopping recording
+* Starting recording (and settings for start and stop condition, e.g button, time, etc.)
+* Getting live sensor data
 #####Not Working:
 * Everything else

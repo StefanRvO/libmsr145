@@ -89,6 +89,33 @@ struct tm MSRDevice::getTime()
     delete response;
     return msr_time;
 }
+void MSRDevice::setTime(struct tm *timeset/* need to be a mktime() formated, eg not have more than 60 seconds*/)
+{
+    //if nullptr, set to local time
+    if(timeset == nullptr)
+    {
+        time_t rawtime;
+        time(&rawtime);
+        timeset = localtime(&rawtime);
+    }
+    size_t response_size = 8;
+    uint8_t command[] = {0x8D, 0x00,
+        0x00 /*minutes*/,
+        0x00 /*hours*, 3 highest is lsb seconds*/,
+        0x00/*days 3 highest is msb seconds*/,
+        0x00/* month*/,
+        0x00/*year*/};
+    uint8_t *response = new uint8_t[response_size];
+    command[2] = timeset->tm_min;
+    command[3] = timeset->tm_hour + ((timeset->tm_sec & 0x7) << 5);
+    command[4] = (timeset->tm_mday - 1) + ((timeset->tm_sec >> 3) << 5);
+    command[5] = timeset->tm_mon;
+    command[6] = timeset->tm_year - 100;
+
+    this->sendcommand(command, sizeof(command), response, response_size);
+    delete response;
+
+}
 
 std::string MSRDevice::getName()
 {
@@ -180,16 +207,16 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
     {
         uint8_t active_recording_get[] = {0x8B, 0x00, 0x01, 0x00, 0x00, 0x08, 0x00};
         this->sendcommand(active_recording_get, sizeof(active_recording_get), response, response_size);
-        for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
-        printf("\n");
+        //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
+        //printf("\n");
         cur_address = (response[8] <<  8) + response[7];
         next_placement_get[3] = cur_address & 0xFF;
         next_placement_get[4] = cur_address >> 8;
         if(response[1] == 0x01)
         {
             this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
-            for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
-            printf("\n");
+            //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
+            //printf("\n");
         }
         start_address = (response[8] <<  8) + response[7];
         if(++end_address == 0x2000)
@@ -212,8 +239,8 @@ std::vector<rec_entry> MSRDevice::getRecordinglist()
     while(cur_address != 0x1FFF)
     {
         this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
-        for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
-        printf("\n");
+        //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
+        //printf("\n");
         //adress to next entry is placed in byte 8 and 9
         switch(response[1])
         {
@@ -413,4 +440,76 @@ void MSRDevice::getSensorData(int16_t *returnvalues, sampletype type1, sampletyp
     if(type2 != sampletype::none) returnvalues[1] = response[3] + (response[4] << 8);
     if(type3 != sampletype::none) returnvalues[2] = response[5] + (response[6] << 8);
     usleep(20000); //needed to prevent staaling when doing many succesive calls
+    delete[] response;
+}
+
+void MSRDevice::setBlinkRate(uint32_t blinkrate)
+{   //Blinkrate is set as 1/512 seconds between blinks
+    uint8_t byte1 = blinkrate & 0xFF;
+    uint8_t byte2 = (blinkrate >> 8) & 0xFF;
+    uint8_t byte3 = (blinkrate >> 16) & 0xFF;
+    uint8_t byte4 = (blinkrate >> 24) & 0xFF;
+    uint8_t blink_set_command[] = {0x84, 0x01, 0x07, byte1, byte2, byte3, byte4};
+    this->sendcommand(blink_set_command, sizeof(blink_set_command), blink_set_command, 8);
+
+}
+void MSRDevice::stopRecording()
+{
+    uint8_t stop_command[] = {0x86, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(stop_command, sizeof(stop_command), stop_command, 8);
+}
+void MSRDevice::start_recording(startcondition start_set,
+    struct tm *starttime, struct tm *stoptime)
+{
+    //command for setting up when a recording should start
+    uint8_t recording_setup[] = {0x84, 0x02, 0x01, 0x00, 0x01, 0x00, 0x00};
+    if(starttime != nullptr)
+    {
+        uint8_t set_start_time[] = {0x8D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+        set_start_time[2] = starttime->tm_min;
+        set_start_time[3] = starttime->tm_hour + ((starttime->tm_sec & 0x7) << 5);
+        set_start_time[4] = (starttime->tm_mday - 1) + ((starttime->tm_sec >> 3) << 5);
+        set_start_time[5] = starttime->tm_mon;
+        set_start_time[6] = starttime->tm_year - 100;
+        this->sendcommand(set_start_time, sizeof(set_start_time), set_start_time, 8);
+    }
+    if(stoptime != nullptr)
+    {
+        uint8_t set_stop_time[] = {0x8D, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
+        set_stop_time[2] = stoptime->tm_min;
+        set_stop_time[3] = stoptime->tm_hour + ((stoptime->tm_sec & 0x7) << 5);
+        set_stop_time[4] = (stoptime->tm_mday - 1) + ((stoptime->tm_sec >> 3) << 5);
+        set_stop_time[5] = stoptime->tm_mon;
+        set_stop_time[6] = stoptime->tm_year - 100;
+        this->sendcommand(set_stop_time, sizeof(set_stop_time), set_stop_time, 8);
+    }
+    switch(start_set)
+    {
+        case startcondition::now:
+            recording_setup[2] = 0x01;
+            break;
+        case startcondition::push_start:
+            recording_setup[2] = 0x03;
+            break;
+        case startcondition::push_start_stop:
+            recording_setup[2] = 0x03;
+            recording_setup[3] = 0x03;
+            break;
+        case startcondition::time_start:
+            recording_setup[2] = 0x02;
+            break;
+        case startcondition::time_start_stop:
+            recording_setup[2] = 0x02;
+            recording_setup[3] = 0x02;
+            break;
+        case startcondition::time_stop:
+            recording_setup[2] = 0x01;
+            recording_setup[3] = 0x02;
+
+    }
+    this->sendcommand(recording_setup, sizeof(recording_setup), recording_setup, 8);
+
+    //start the recording
+    uint8_t recording_start[] = {0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(recording_start, sizeof(recording_start), recording_start, 8);
 }

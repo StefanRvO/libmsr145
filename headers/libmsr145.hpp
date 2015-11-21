@@ -15,6 +15,15 @@
 #define MSR_BUAD_RATE 9600
 #define MSR_STOP_BITS boost::asio::serial_port_base::stop_bits::one
 #define MSR_WORD_LENGHT 8
+enum startcondition
+{
+    now,
+    push_start,
+    push_start_stop,
+    time_start,
+    time_start_stop,
+    time_stop,
+};
 
 enum sampletype
 {
@@ -62,7 +71,11 @@ class MSRDevice
         void setName(std::string name);
         std::vector<rec_entry> getRecordinglist(); //only work when recording is not active
         std::vector<sample> getSamples(rec_entry record);
-        void getfirstRecord(uint8_t *response, std::vector<rec_entry> *rec_addresses);
+        void setTime(struct tm *timeset = nullptr);
+        void setBlinkRate(uint32_t blinkrate);
+        void start_recording(startcondition start_set,
+            struct tm *starttime = nullptr, struct tm *stoptime = nullptr);
+        void stopRecording();
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
