@@ -22,10 +22,12 @@ int main()
     //}
     std::cout << std::endl;*/
     msr.stopRecording();
-    usleep(1000000);
+    usleep(100000);
+    msr.set_baud(9600 * 4);
+
     auto recordings = msr.getRecordinglist();
     char *time_str = new char[500];
-    //std::cout << recordings.size() << std::endl;
+    std::cout << recordings.size() << std::endl;
     int k = 0;
     for(auto i : recordings)
     {
@@ -37,6 +39,8 @@ int main()
     std::vector<sample> samples;
     //for(uint8_t i = 0; i< recordings.size(); i++)
     //{
+    if(recordings.size())
+    {
         samples = msr.getSamples(recordings[0]);
         for(size_t j = 0; j < samples.size(); j++)
         {
@@ -45,6 +49,7 @@ int main()
                 printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / 512.);
             }
         }
+    }
     msr.set_baud(9600);
         //printf("%u\n\n\n", i);
     //}*/
@@ -91,8 +96,13 @@ int main()
     timeset->tm_min += 1;
     mktime(timeset);
 
-    msr.start_recording( startcondition::time_stop, nullptr, timeset);
-    msr.setBlinkRate(400);
+    for(uint8_t i = 0; i < 8; i++)
+        msr.set_timer_interval((timer)i, 512);
+    for(uint8_t i = 0; i < 8; i++)
+        msr.set_timer_measurements((timer)i, 0, 0);
+    //msr.set_timer_measurements((timer)7, active_measurement::blink);
+    //msr.set_timer_measurements((timer)1, active_measurement::blink);
+    msr.start_recording( startcondition::now, nullptr, timeset);
 
     /*char *time_str = new char[500];
     auto t = msr.getTime();

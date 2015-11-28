@@ -17,7 +17,7 @@ using namespace boost::asio;
 //sends the given command to the MSR145 and read out_lenght number of bytes from it into out
 uint8_t MSRDevice::calcChecksum(uint8_t *data, size_t lenght)
 {
-    //The MSR145 uses the dallas 8-bit CRC as checksum. Here i use boost to calculate it.
+    //The MSR145 uses the dallas 8-bit CRC as checksum. Here we use boost to calculate it.
     boost::crc_optimal<8, 0x31, 0x00, 0x00, true, true> crc;
     crc.process_bytes(data, lenght);
     return crc.checksum();
@@ -25,21 +25,35 @@ uint8_t MSRDevice::calcChecksum(uint8_t *data, size_t lenght)
 void MSRDevice::sendcommand(uint8_t *command, size_t command_lenght,
                             uint8_t *out, size_t out_lenght)
 {
+    bool selfalloced = false;
+    if(out == nullptr && out_lenght > 0)
+    {
+        selfalloced = true;
+        out = new uint8_t[out_lenght];
+    }
     auto checksum = calcChecksum(command, command_lenght);
     write(*(this->port), buffer(command, command_lenght));
     write(*(this->port), buffer(&checksum, sizeof(checksum)));
     size_t read_bytes = read(*(this->port), buffer(out, out_lenght), transfer_exactly(out_lenght));
     assert(read_bytes == out_lenght);
     assert(out_lenght == 0 || (out[out_lenght - 1] == calcChecksum(out, out_lenght - 1)));
+    if(selfalloced) delete[] out;
 }
 
 void MSRDevice::sendraw(uint8_t *command, size_t command_lenght,
                             uint8_t *out, size_t out_lenght)
 {
+    bool selfalloced = false;
+    if(out == nullptr)
+    {
+        selfalloced = true;
+        out = new uint8_t[out_lenght];
+    }
     write(*(this->port), buffer(command, command_lenght));
     size_t read_bytes = read(*(this->port), buffer(out, out_lenght), transfer_exactly(out_lenght));
     assert(read_bytes == out_lenght);
     assert(out_lenght == 0 || (out[out_lenght - 1] == calcChecksum(out, out_lenght - 1)));
+    if(selfalloced) delete[] out;
 }
 
 
@@ -66,7 +80,7 @@ std::string MSRDevice::getSerialNumber()
     this->sendcommand(command, sizeof(command), response, response_size);
 
     uint64_t serial = (response[3] << 16) + (response[2] << 8) + response[1];
-    delete response;
+    delete[] response;
     return std::to_string(serial);
 }
 
@@ -86,7 +100,7 @@ struct tm MSRDevice::getTime()
     msr_time.tm_sec = response[1];
     msr_time.tm_isdst = -1;
     mktime(&msr_time);
-    delete response;
+    delete[] response;
     return msr_time;
 }
 void MSRDevice::setTime(struct tm *timeset/* need to be a mktime() formated, eg not have more than 60 seconds*/)
@@ -98,23 +112,19 @@ void MSRDevice::setTime(struct tm *timeset/* need to be a mktime() formated, eg 
         time(&rawtime);
         timeset = localtime(&rawtime);
     }
-    size_t response_size = 8;
     uint8_t command[] = {0x8D, 0x00,
         0x00 /*minutes*/,
         0x00 /*hours*, 3 highest is lsb seconds*/,
         0x00/*days 3 highest is msb seconds*/,
         0x00/* month*/,
         0x00/*year*/};
-    uint8_t *response = new uint8_t[response_size];
     command[2] = timeset->tm_min;
     command[3] = timeset->tm_hour + ((timeset->tm_sec & 0x7) << 5);
     command[4] = (timeset->tm_mday - 1) + ((timeset->tm_sec >> 3) << 5);
     command[5] = timeset->tm_mon;
     command[6] = timeset->tm_year - 100;
 
-    this->sendcommand(command, sizeof(command), response, response_size);
-    delete response;
-
+    this->sendcommand(command, sizeof(command), nullptr, 8);
 }
 
 std::string MSRDevice::getName()
@@ -132,7 +142,7 @@ std::string MSRDevice::getName()
     this->sendcommand(command_second, sizeof(command_second), response, response_size);
 
     name.append((const char *)response + 1, 6);
-    delete response;
+    delete[] response;
     return name;
 
 }
@@ -144,9 +154,6 @@ void MSRDevice::setName(std::string name)
     while(name.size() < 12)
         name.push_back(' ');
 
-    size_t response_size = 8;
-    uint8_t *response = new uint8_t[response_size];
-
     //this is some kind of "setup command" without it, the device won't accept the next commands
     uint8_t command_1[] = {0x85, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -155,11 +162,10 @@ void MSRDevice::setName(std::string name)
     uint8_t command_3[] = {0x84, 0x05, 0x01, (uint8_t)name[4], (uint8_t)name[5], (uint8_t)name[6], (uint8_t)name[7]};
     uint8_t command_4[] = {0x84, 0x05, 0x02, (uint8_t)name[8], (uint8_t)name[9], (uint8_t)name[10], (uint8_t)name[11]};
 
-    this->sendcommand(command_1, sizeof(command_1), response, response_size);
-    this->sendcommand(command_2, sizeof(command_2), response, response_size);
-    this->sendcommand(command_3, sizeof(command_3), response, response_size);
-    this->sendcommand(command_4, sizeof(command_4), response, response_size);
-    delete response;
+    this->sendcommand(command_1, sizeof(command_1), nullptr, 8);
+    this->sendcommand(command_2, sizeof(command_2), nullptr, 8);
+    this->sendcommand(command_3, sizeof(command_3), nullptr, 8);
+    this->sendcommand(command_4, sizeof(command_4), nullptr, 8);
 }
 
 rec_entry MSRDevice::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr)
@@ -420,14 +426,10 @@ void MSRDevice::set_baud(uint32_t baudrate)
 
 void MSRDevice::updateSensors()
 {
-    size_t response_size = 8;
-    uint8_t *response = new uint8_t[response_size];
-
     //the fetch command. Format is:
     //0x8B 0x00 0x00 <address lsb> <address msb> <lenght lsb> <lenght msb>
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
-    this->sendcommand(command, sizeof(command), response, response_size);
-    delete[] response;
+    this->sendcommand(command, sizeof(command), nullptr, 8);
     usleep(20000); //needed to prevent staaling when doing many succesive calls
 }
 void MSRDevice::getSensorData(int16_t *returnvalues, sampletype type1, sampletype type2, sampletype type3)
@@ -443,20 +445,11 @@ void MSRDevice::getSensorData(int16_t *returnvalues, sampletype type1, sampletyp
     delete[] response;
 }
 
-void MSRDevice::setBlinkRate(uint32_t blinkrate)
-{   //Blinkrate is set as 1/512 seconds between blinks
-    uint8_t byte1 = blinkrate & 0xFF;
-    uint8_t byte2 = (blinkrate >> 8) & 0xFF;
-    uint8_t byte3 = (blinkrate >> 16) & 0xFF;
-    uint8_t byte4 = (blinkrate >> 24) & 0xFF;
-    uint8_t blink_set_command[] = {0x84, 0x01, 0x07, byte1, byte2, byte3, byte4};
-    this->sendcommand(blink_set_command, sizeof(blink_set_command), blink_set_command, 8);
 
-}
 void MSRDevice::stopRecording()
 {
     uint8_t stop_command[] = {0x86, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(stop_command, sizeof(stop_command), stop_command, 8);
+    this->sendcommand(stop_command, sizeof(stop_command), nullptr, 8);
 }
 void MSRDevice::start_recording(startcondition start_set,
     struct tm *starttime, struct tm *stoptime)
@@ -471,7 +464,7 @@ void MSRDevice::start_recording(startcondition start_set,
         set_start_time[4] = (starttime->tm_mday - 1) + ((starttime->tm_sec >> 3) << 5);
         set_start_time[5] = starttime->tm_mon;
         set_start_time[6] = starttime->tm_year - 100;
-        this->sendcommand(set_start_time, sizeof(set_start_time), set_start_time, 8);
+        this->sendcommand(set_start_time, sizeof(set_start_time), nullptr, 8);
     }
     if(stoptime != nullptr)
     {
@@ -481,7 +474,7 @@ void MSRDevice::start_recording(startcondition start_set,
         set_stop_time[4] = (stoptime->tm_mday - 1) + ((stoptime->tm_sec >> 3) << 5);
         set_stop_time[5] = stoptime->tm_mon;
         set_stop_time[6] = stoptime->tm_year - 100;
-        this->sendcommand(set_stop_time, sizeof(set_stop_time), set_stop_time, 8);
+        this->sendcommand(set_stop_time, sizeof(set_stop_time), nullptr, 8);
     }
     switch(start_set)
     {
@@ -507,9 +500,33 @@ void MSRDevice::start_recording(startcondition start_set,
             recording_setup[3] = 0x02;
 
     }
-    this->sendcommand(recording_setup, sizeof(recording_setup), recording_setup, 8);
+    this->sendcommand(recording_setup, sizeof(recording_setup), nullptr, 8);
 
     //start the recording
     uint8_t recording_start[] = {0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(recording_start, sizeof(recording_start), recording_start, 8);
+    this->sendcommand(recording_start, sizeof(recording_start), nullptr, 8);
+}
+
+
+void MSRDevice::set_timer_interval(timer t, uint64_t interval) //interval is in 1/512 seconds
+{
+    uint8_t set_command[] = {0x84, 0x01, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
+    set_command[3] = interval & 0xFF;
+    set_command[4] = (interval >> 8) & 0xFF;
+    set_command[5] = (interval >> 16) & 0xFF;
+    set_command[6] = (interval >> 24) & 0xFF;
+    this->sendcommand(set_command, sizeof(set_command), nullptr, 8);
+}
+
+
+void MSRDevice::set_timer_measurements(timer t, uint8_t bitmask, bool blink)
+{   //printf("%02X", bitmask)
+    uint8_t blinkbyte = blink << 7;
+    uint8_t settings[] = {0x84, 0x00, (uint8_t)t,
+        0x01, //control if timer is on or off
+        0x00,
+        bitmask,
+        blinkbyte};
+        if(bitmask == 0x00 && blinkbyte == false) settings[3] = 0x00;
+    this->sendcommand(settings, sizeof(settings), nullptr, 8);
 }

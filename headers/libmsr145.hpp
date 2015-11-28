@@ -15,6 +15,39 @@
 #define MSR_BUAD_RATE 9600
 #define MSR_STOP_BITS boost::asio::serial_port_base::stop_bits::one
 #define MSR_WORD_LENGHT 8
+
+namespace active_measurement
+{
+    enum active_measurement
+    {
+        pressure = 1 << 0,
+        humidity = 1 << 2,
+        T1       = 1 << 3,
+        bat      = 1 << 4,
+    };
+}
+
+enum timer
+{
+    t0 = 0x00, //called t1 by windows software
+    t1 = 0x01,
+    t2 = 0x02,
+    t3 = 0x03,
+    t4 = 0x04,
+    t5 = 0x05,
+    t6 = 0x06, //called t2 by windows software
+    t7 = 0x07,
+};
+
+namespace timersetting
+{
+    enum timersetting
+    {
+            t1,
+            t2,
+            own,
+    };
+}
 enum startcondition
 {
     now,
@@ -72,10 +105,12 @@ class MSRDevice
         std::vector<rec_entry> getRecordinglist(); //only work when recording is not active
         std::vector<sample> getSamples(rec_entry record);
         void setTime(struct tm *timeset = nullptr);
-        void setBlinkRate(uint32_t blinkrate);
         void start_recording(startcondition start_set,
             struct tm *starttime = nullptr, struct tm *stoptime = nullptr);
         void stopRecording();
+        void set_timer_interval(timer t, uint64_t interval);
+        void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
+        void setblink(bool blinkon);
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
