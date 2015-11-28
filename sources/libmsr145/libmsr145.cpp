@@ -560,7 +560,7 @@ void MSRDevice::set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
     limit_setting record_limit, limit_setting alarm_limit)
 {
     uint8_t type_byte = type;
-    uint8_t limit_setting_byte = record_limit | alarm_limit << 3;
+    uint8_t limit_setting_byte = record_limit | alarm_limit;
     uint8_t set_limit1[] = {0x89, 0x0A, type_byte, limit_setting_byte, 0x00, (uint8_t)(limit1 & 0xFF), (uint8_t)(limit1 >> 8)};
     uint8_t set_limit2[] = {0x89, 0x0B, type_byte, 0x00, 0x00, (uint8_t)(limit2 & 0xFF), (uint8_t)(limit2  >> 8)};
     this->sendcommand(set_limit1, sizeof(set_limit1), nullptr, 8);
@@ -571,4 +571,11 @@ void MSRDevice::reset_limits()
 {   //this resets all limits to their disabled state
     uint8_t reset_cmd[] = {0x89, 0x09, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
     this->sendcommand(reset_cmd, sizeof(reset_cmd), nullptr, 8);
+}
+
+void MSRDevice::set_marker_settings(bool marker_on, bool alarm_confirm_on)
+{
+    uint8_t set_cmd[] =  {0x89, 0x08, (uint8_t)marker_on, (uint8_t)alarm_confirm_on, 0xFF, 0xFF, 0xFF};
+    this->sendcommand(set_cmd, sizeof(set_cmd), nullptr, 8);
+
 }

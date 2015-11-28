@@ -52,12 +52,17 @@ enum startcondition
 enum limit_setting
 {
     no_limit = 0x00,
-    less_limit2 = 0x01,
-    more_limit2 = 0x02,
-    more_limit1_less_limit2 = 0x03,
-    less_limit1_more_limit2 = 0x04,
-    start_more_limit1_stop_less_limit2 = 0x05,
-    start_less_limit1_stop_more_limit2 = 0x06
+    rec_less_limit2 = 0x01,
+    rec_more_limit2 = 0x02,
+    rec_more_limit1_and_less_limit2 = 0x03,
+    rec_less_limit1_or_more_limit2 = 0x04,
+    rec_start_more_limit1_stop_less_limit2 = 0x05,
+    rec_start_less_limit1_stop_more_limit2 = 0x06,
+    alarm_less_limit1 = 0x01 << 3,
+    alarm_more_limit1 = 0x02 << 3,
+    alarm_more_limit1_and_less_limit2 = 0x03 << 3,
+    alarm_ess_limit1_or_more_limit2 = 0x04 << 3,
+
 };
 
 enum sampletype
@@ -116,6 +121,7 @@ class MSRDevice
         void set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
             limit_setting record_limit, limit_setting alarm_limit);
         void reset_limits();
+        void set_marker_settings(bool marker_on, bool alarm_confirm_on);
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);

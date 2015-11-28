@@ -103,7 +103,7 @@ int main()
     msr.set_timer_measurements((timer)7, active_measurement::humidity, 1);
 
     //msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::no_limit);
-    msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::more_limit2);
+    msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1);
 
 
 
