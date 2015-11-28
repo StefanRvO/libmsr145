@@ -39,15 +39,6 @@ enum timer
     t7 = 0x07, //used for setting blinkrate in windows software.
 };
 
-namespace timersetting
-{
-    enum timersetting
-    {
-            t1,
-            t2,
-            own,
-    };
-}
 enum startcondition
 {
     now,
@@ -56,6 +47,17 @@ enum startcondition
     time_start,
     time_start_stop,
     time_stop,
+};
+
+enum limit_setting
+{
+    no_limit = 0x00,
+    less_limit2 = 0x01,
+    more_limit2 = 0x02,
+    more_limit1_less_limit2 = 0x03,
+    less_limit1_more_limit2 = 0x04,
+    start_more_limit1_stop_less_limit2 = 0x05,
+    start_less_limit1_stop_more_limit2 = 0x06
 };
 
 enum sampletype
@@ -111,6 +113,9 @@ class MSRDevice
         void set_timer_interval(timer t, uint64_t interval);
         void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
         void format_memory();
+        void set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
+            limit_setting record_limit, limit_setting alarm_limit);
+        void reset_limits();
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);

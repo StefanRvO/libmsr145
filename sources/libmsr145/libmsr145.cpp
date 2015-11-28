@@ -539,9 +539,7 @@ void MSRDevice::format_memory()
         0x00 /*adress lsb*/, 0x00 /*address msb*/,
         0x5A, 0xA5};
     uint8_t start_cmd1[] = {0x8A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    //uint8_t start_cmd2[] = {0x8A, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00};
     this->sendcommand(start_cmd1, sizeof(start_cmd1), nullptr, 8);
-    //this->sendcommand(start_cmd2, sizeof(start_cmd2), nullptr, 8);
 
     uint8_t confirm_command[] = {0x8A, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t *returnval = new uint8_t[8];
@@ -556,4 +554,21 @@ void MSRDevice::format_memory()
         } while(returnval[1] != 0xBC);
     }
     delete[] returnval;
+}
+
+void MSRDevice::set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
+    limit_setting record_limit, limit_setting alarm_limit)
+{
+    uint8_t type_byte = type;
+    uint8_t limit_setting_byte = record_limit | alarm_limit << 3;
+    uint8_t set_limit1[] = {0x89, 0x0A, type_byte, limit_setting_byte, 0x00, (uint8_t)(limit1 & 0xFF), (uint8_t)(limit1 >> 8)};
+    uint8_t set_limit2[] = {0x89, 0x0B, type_byte, 0x00, 0x00, (uint8_t)(limit2 & 0xFF), (uint8_t)(limit2  >> 8)};
+    this->sendcommand(set_limit1, sizeof(set_limit1), nullptr, 8);
+    this->sendcommand(set_limit2, sizeof(set_limit2), nullptr, 8);
+}
+
+void MSRDevice::reset_limits()
+{   //this resets all limits to their disabled state
+    uint8_t reset_cmd[] = {0x89, 0x09, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
+    this->sendcommand(reset_cmd, sizeof(reset_cmd), nullptr, 8);
 }

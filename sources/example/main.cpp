@@ -88,12 +88,12 @@ int main()
         for(uint8_t i = 0; i < 8; i++) printf("%02X ", r[i]);
         printf("\n");
     }*/
-    /*msr.setTime();
+    msr.reset_limits();
+    msr.setTime();
     struct tm *timeset;
     time_t rawtime;
     time(&rawtime);
     timeset = localtime(&rawtime);
-    timeset->tm_min += 1;
     mktime(timeset);
 
     for(uint8_t i = 0; i < 8; i++)
@@ -101,9 +101,14 @@ int main()
     for(uint8_t i = 0; i < 8; i++)
         msr.set_timer_measurements((timer)i, 0, 1);
     msr.set_timer_measurements((timer)7, active_measurement::humidity, 1);
+
+    //msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::no_limit);
+    msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::more_limit2);
+
+
+
     msr.start_recording( startcondition::now, nullptr, timeset);
-    */
-    msr.format_memory();
+    //msr.format_memory();
     /*char *time_str = new char[500];
     auto t = msr.getTime();
     strftime(time_str, 500, "%D - %T", &t);
