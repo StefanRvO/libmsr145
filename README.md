@@ -18,11 +18,15 @@ This is very much a work in progress, and very few things are working yet.
 * List recordings on device
 * Read current time of device
 * Set time on device
+* Setting baudrate(If the baudrate is set to more than 38400 b/s, the device hangs if too many commands is sent in a row, also the baudrate is reset to 9600 b/s if a command have not been send in ~5 seconds).
+
 * Calculation of 8-bit CRC checksum used by the protocol
 * Read samples from recording (not 100% working when reading an active record)
-* Setting blink interval of blue LED
 * Stopping recording
 * Starting recording (and settings for start and stop condition, e.g button, time, etc.)
 * Getting live sensor data
+* Setting timer intervals, which sensors should be sample when the timer triggers, and if the blue LED should blink on timer trigger.
+* Formatting the memory
+
 #####Not Working:
 * Everything else

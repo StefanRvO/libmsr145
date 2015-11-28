@@ -530,3 +530,30 @@ void MSRDevice::set_timer_measurements(timer t, uint8_t bitmask, bool blink)
         if(bitmask == 0x00 && blinkbyte == false) settings[3] = 0x00;
     this->sendcommand(settings, sizeof(settings), nullptr, 8);
 }
+void MSRDevice::format_memory()
+{
+    stopRecording(); //stop current recording before format.
+    uint16_t start_address = 0x0000;
+    uint16_t end_address = 0x03FF;
+    uint8_t erase_cmd[] = {0x8A, 0x06, 0x00,
+        0x00 /*adress lsb*/, 0x00 /*address msb*/,
+        0x5A, 0xA5};
+    uint8_t start_cmd1[] = {0x8A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    //uint8_t start_cmd2[] = {0x8A, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(start_cmd1, sizeof(start_cmd1), nullptr, 8);
+    //this->sendcommand(start_cmd2, sizeof(start_cmd2), nullptr, 8);
+
+    uint8_t confirm_command[] = {0x8A, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t *returnval = new uint8_t[8];
+    for(uint16_t addr = start_address; addr <= end_address; addr++)
+    {
+        erase_cmd[3] = addr & 0xFF;
+        erase_cmd[4] = addr >> 8;
+        this->sendcommand(erase_cmd, sizeof(erase_cmd), returnval, 8);
+        do
+        {
+            this->sendcommand(confirm_command, sizeof(confirm_command), returnval, 8);
+        } while(returnval[1] != 0xBC);
+    }
+    delete[] returnval;
+}

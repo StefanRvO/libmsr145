@@ -88,7 +88,7 @@ int main()
         for(uint8_t i = 0; i < 8; i++) printf("%02X ", r[i]);
         printf("\n");
     }*/
-    msr.setTime();
+    /*msr.setTime();
     struct tm *timeset;
     time_t rawtime;
     time(&rawtime);
@@ -97,13 +97,13 @@ int main()
     mktime(timeset);
 
     for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_interval((timer)i, 512);
+        msr.set_timer_interval((timer)i, rand() % 512 + 50);
     for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_measurements((timer)i, 0, 0);
-    //msr.set_timer_measurements((timer)7, active_measurement::blink);
-    //msr.set_timer_measurements((timer)1, active_measurement::blink);
+        msr.set_timer_measurements((timer)i, 0, 1);
+    msr.set_timer_measurements((timer)7, active_measurement::humidity, 1);
     msr.start_recording( startcondition::now, nullptr, timeset);
-
+    */
+    msr.format_memory();
     /*char *time_str = new char[500];
     auto t = msr.getTime();
     strftime(time_str, 500, "%D - %T", &t);

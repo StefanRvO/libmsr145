@@ -29,14 +29,14 @@ namespace active_measurement
 
 enum timer
 {
-    t0 = 0x00, //called t1 by windows software
+    t0 = 0x00, //called t1 by windows software.
     t1 = 0x01,
     t2 = 0x02,
     t3 = 0x03,
     t4 = 0x04,
     t5 = 0x05,
-    t6 = 0x06, //called t2 by windows software
-    t7 = 0x07,
+    t6 = 0x06, //called t2 by windows software.
+    t7 = 0x07, //used for setting blinkrate in windows software.
 };
 
 namespace timersetting
@@ -110,7 +110,7 @@ class MSRDevice
         void stopRecording();
         void set_timer_interval(timer t, uint64_t interval);
         void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
-        void setblink(bool blinkon);
+        void format_memory();
     public:
         void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
         void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
