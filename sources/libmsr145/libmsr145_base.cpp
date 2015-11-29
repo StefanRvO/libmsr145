@@ -68,6 +68,8 @@ MSR_Base::MSR_Base(std::string _portname)
 
 MSR_Base::~MSR_Base()
 {
+    //set baud to 9600 so we can open quickly again
+    set_baud(MSR_BUAD_RATE);
     delete port;
 }
 

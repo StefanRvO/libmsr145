@@ -25,7 +25,7 @@ int main()
     usleep(100000);
     msr.set_baud(9600 * 4);
 
-    auto recordings = msr.getRecordinglist();
+    /*auto recordings = msr.getRecordinglist();
     char *time_str = new char[500];
     std::cout << recordings.size() << std::endl;
     int k = 0;
@@ -50,7 +50,7 @@ int main()
             }
         }
     }
-    msr.set_baud(9600);
+    msr.set_baud(9600);*/
         //printf("%u\n\n\n", i);
     //}*/
     /*msr.set_baud(230400);
@@ -89,29 +89,30 @@ int main()
         printf("\n");
     }*/
     msr.reset_limits();
-    msr.setTime();
+    /*msr.setTime();
     struct tm *timeset;
     time_t rawtime;
     time(&rawtime);
     timeset = localtime(&rawtime);
-    mktime(timeset);
+    mktime(timeset);*/
 
-    for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_interval((timer)i, rand() % 512 + 50);
+    //for(uint8_t i = 0; i < 8; i++)
+        msr.set_timer_interval((timer)4, 400);
     for(uint8_t i = 0; i < 8; i++)
         msr.set_timer_measurements((timer)i, 0, 1);
     msr.set_timer_measurements((timer)7, active_measurement::humidity, 1);
 
-    //msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::no_limit);
-    msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1);
+    //msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::rec_start_more_limit1_stop_less_limit2);
+    msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
+    msr.set_limit(sampletype::pressure, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
 
-
-
-    msr.start_recording( startcondition::now, nullptr, timeset, true);
+    msr.start_recording( startcondition::now, nullptr, nullptr, false);
+    std::cout << msr.readLimitSettings() << std::endl;
+    //std::cout << msr.readRingbufferSetting() << std::endl;
     //msr.format_memory();
     /*char *time_str = new char[500];
     auto t = msr.getTime();
     strftime(time_str, 500, "%D - %T", &t);
-    std::cout << time_str << std::endl;
-    msr.set_baud(9600);*/
+    std::cout << time_str << std::endl;*/
+    msr.set_baud(9600);
 }

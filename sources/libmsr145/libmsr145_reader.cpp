@@ -295,5 +295,78 @@ std::string MSR_Reader::getName()
     name.append((const char *)response + 1, 6);
     delete[] response;
     return name;
+}
 
+uint32_t MSR_Reader::getTimerInterval(timer t)
+{
+    uint8_t *response = new uint8_t[8];
+    uint8_t get_cmd[] = {0x83, 0x01, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(get_cmd, sizeof(get_cmd), response, 8);
+    uint32_t interval = (response[6] << 24) + (response[5] << 16) +
+        (response[4] << 8) + response[3];
+    delete[] response;
+    return interval;
+}
+
+void MSR_Reader::getActivatedMeasurements(timer t, uint8_t *measurements, bool *blink)
+{   //Reads which measurements are active for this timer.
+    //Saves the result in the given measurement and blink pointers.
+    //It is done this way as we both need to determine if blink is active,
+    //and the rest of the measurements
+    uint8_t *response = new uint8_t[8];
+    uint8_t get_cmd[] = {0x83, 0x00, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(get_cmd, sizeof(get_cmd), response, 8);
+    *measurements = response[3];
+    *blink = response[6];
+    delete[] response;
+}
+
+bool MSR_Reader::isRecording()
+{
+    uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
+    bool recording_active = (response[1] == 0x83); //this byte defines if the device is currently recording
+    delete[] response;
+    return recording_active;
+}
+
+bool MSR_Reader::readRingbufferSetting()
+{
+    uint8_t read_cmd[] = {0x83, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
+    //for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
+    //printf("\n");
+    bool bufferon = !(response[4] & 0x01);
+    delete[] response;
+    return bufferon;
+}
+uint16_t MSR_Reader::readGeneralLimitSettings()
+{   //the sampletimes where limits is active can be recieved by doing (returnval & (1 << sampletype))
+    uint8_t read_cmd[] ={0x88, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00};
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
+    uint16_t rec_limits = (response[4] << 8) + response[3];
+    uint16_t alarm_limits = (response[6] << 8) + response[5];
+    //for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
+    //printf("\n");
+    delete response;
+    //return the limits OR'd together. We don't care if it's an alarm-limit or rec.
+    //this can be checked by a later command, which also give the actual limits.
+    return rec_limits | alarm_limits;
+}
+
+void MSR_Reader::readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2)
+{
+    uint8_t read_cmd[] = {0x88, 0x0A, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
+    *limit_setting = response[1];
+    *limit1 = (response[4] << 8) + response[3];
+    *limit2 = (response[6] << 8) + response[5];
 }

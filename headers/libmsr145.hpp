@@ -68,6 +68,12 @@ class MSR_Reader : virtual public MSR_Base
         virtual std::vector<sample> getSamples(rec_entry record);
         virtual void getSensorData(int16_t *returnvalues, sampletype type1 = sampletype::none,
             sampletype type2 = sampletype::none, sampletype type3 = sampletype::none);
+        virtual uint32_t getTimerInterval(timer t);
+        virtual void getActivatedMeasurements(timer t, uint8_t *measurements, bool *blink);
+        virtual bool isRecording();
+        virtual bool readRingbufferSetting();
+        virtual uint16_t readGeneralLimitSettings();
+        virtual void readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
     protected:
         virtual std::vector<uint8_t> getRawRecording(rec_entry record);
         virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);
@@ -79,5 +85,4 @@ class MSRDevice : public MSR_Writer, public MSR_Reader
     public:
         MSRDevice(std::string _portname) :
         MSR_Base(_portname), MSR_Writer(_portname), MSR_Reader(_portname) {};
-
 };
