@@ -30,12 +30,16 @@ void MSR_Base::sendcommand(uint8_t *command, size_t command_lenght,
         selfalloced = true;
         out = new uint8_t[out_lenght];
     }
+
     auto checksum = calcChecksum(command, command_lenght);
-    write(*(this->port), buffer(command, command_lenght));
-    write(*(this->port), buffer(&checksum, sizeof(checksum)));
-    size_t read_bytes = read(*(this->port), buffer(out, out_lenght), transfer_exactly(out_lenght));
-    assert(read_bytes == out_lenght);
-    assert(out_lenght == 0 || (out[out_lenght - 1] == calcChecksum(out, out_lenght - 1)));
+    do
+    {
+        write(*(this->port), buffer(command, command_lenght));
+        write(*(this->port), buffer(&checksum, sizeof(checksum)));
+        size_t read_bytes = read(*(this->port), buffer(out, out_lenght), transfer_exactly(out_lenght));
+        assert(read_bytes == out_lenght);
+        assert(out_lenght == 0 || (out[out_lenght - 1] == calcChecksum(out, out_lenght - 1)));
+    } while(out_lenght && (out[0] & 0x20) ); // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
 }
 

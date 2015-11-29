@@ -63,6 +63,7 @@ void MSR_Writer::stopRecording()
     uint8_t stop_command[] = {0x86, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
     this->sendcommand(stop_command, sizeof(stop_command), nullptr, 8);
 }
+
 void MSR_Writer::start_recording(startcondition start_set,
     struct tm *starttime, struct tm *stoptime, bool ringbuffer)
 {

@@ -22,24 +22,35 @@ std::string MSR_Reader::getSerialNumber()
     return std::to_string(serial);
 }
 
-struct tm MSR_Reader::getTime()
+void MSR_Reader::convert_to_tm(uint8_t *response_ptr, struct tm *time_s)
 {
-    size_t response_size = 8;
-    uint8_t command[] = {0x8C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(command, sizeof(command), response, response_size);
+    time_s->tm_year = response_ptr[6] + 100; //response[6] contains years since 2000
+    time_s->tm_mon = response_ptr[5];
+    time_s->tm_mday = response_ptr[4] + 1;
+    time_s->tm_hour = response_ptr[3];
+    time_s->tm_min = response_ptr[2];
+    time_s->tm_sec = response_ptr[1];
+    time_s->tm_isdst = -1;
+    mktime(time_s);
+}
 
-    struct tm msr_time;
-    msr_time.tm_year = response[6] + 100; //response[6] contains years since 2000
-    msr_time.tm_mon = response[5];
-    msr_time.tm_mday = response[4] + 1;
-    msr_time.tm_hour = response[3];
-    msr_time.tm_min = response[2];
-    msr_time.tm_sec = response[1];
-    msr_time.tm_isdst = -1;
-    mktime(&msr_time);
+struct tm MSR_Reader::getTime(uint8_t *command, uint8_t command_lenght)
+{   //Returns the time returned by the command in "command"
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(command, command_lenght, response, response_size);
+    for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
+    printf("\n");
+    struct tm time_s;
+    convert_to_tm(response, &time_s);
     delete[] response;
-    return msr_time;
+    return time_s;
+}
+
+struct tm MSR_Reader::getDeviceTime()
+{
+    uint8_t command[] = {0x8C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return getTime(command, sizeof(command));
 }
 
 rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr)
@@ -297,6 +308,26 @@ std::string MSR_Reader::getName()
     return name;
 }
 
+std::string MSR_Reader::getCalibrationName()
+{
+    //first, collect the first 6 chars of the namespace
+    std::string name;
+    size_t response_size = 8;
+    uint8_t command_first[] = {0x83, 0x05, 0x02, 0x00, 0x00, 0x00, 0x00};
+    uint8_t command_second[] = {0x83, 0x05, 0x03, 0x00, 0x00, 0x00, 0x00};
+
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(command_first, sizeof(command_first), response, response_size);
+
+    name.append((const char *)response + 1, 6);
+    this->sendcommand(command_second, sizeof(command_second), response, response_size);
+
+    name.append((const char *)response + 1, 6);
+    delete[] response;
+    return name;
+}
+
+
 uint32_t MSR_Reader::getTimerInterval(timer t)
 {
     uint8_t *response = new uint8_t[8];
@@ -332,17 +363,31 @@ bool MSR_Reader::isRecording()
     return recording_active;
 }
 
-bool MSR_Reader::readRingbufferSetting()
+void MSR_Reader::readStartSetting(bool *bufferon, startcondition *start)
 {
     uint8_t read_cmd[] = {0x83, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
-    //for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
-    //printf("\n");
-    bool bufferon = !(response[4] & 0x01);
+    for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
+    printf("\n");
+    *bufferon = !(response[4] & 0x01);
+    switch(response[2])
+    {
+        case 0x01:
+            if(response[3] == 0x02) *start = startcondition::time_stop;
+            else                    *start = startcondition::now;
+            break;
+        case 0x02:
+            if(response[3] == 0x02) *start = startcondition::time_start_stop;
+            else                    *start = startcondition::time_start;
+            break;
+        case 0x03:
+            if(response[3] == 0x03) *start = startcondition::push_start_stop;
+            else                    *start = startcondition::push_start;
+            break;
+    }
     delete[] response;
-    return bufferon;
 }
 uint16_t MSR_Reader::readGeneralLimitSettings()
 {   //the sampletimes where limits is active can be recieved by doing (returnval & (1 << sampletype))
@@ -369,4 +414,16 @@ void MSR_Reader::readSampleLimitSettings(sampletype type, uint8_t *limit_setting
     *limit_setting = response[1];
     *limit1 = (response[4] << 8) + response[3];
     *limit2 = (response[6] << 8) + response[5];
+}
+
+struct tm MSR_Reader::getStartTime()
+{   //Get the time where sampling starts
+    uint8_t command[] = {0x8C, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return getTime(command, sizeof(command));
+}
+
+struct tm MSR_Reader::getEndTime()
+{   //Get the time where sampling stops
+    uint8_t command[] = {0x8C, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return getTime(command, sizeof(command));
 }
