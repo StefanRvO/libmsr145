@@ -22,7 +22,7 @@ int main()
     //}
     std::cout << std::endl;*/
     msr.stopRecording();
-    usleep(100000);
+    /*usleep(100000);
     msr.set_baud(9600 * 4);
 
     auto recordings = msr.getRecordinglist();
@@ -50,7 +50,7 @@ int main()
             }
         }
     }
-    msr.set_baud(9600);
+    msr.set_baud(9600);*/
         //printf("%u\n\n\n", i);
     //}*/
     /*msr.set_baud(230400);
@@ -108,9 +108,11 @@ int main()
     //msr.set_limit(sampletype::pressure, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
 
     msr.start_recording( startcondition::now, timeset, timeset, false);
+    msr.set_marker_settings(true, true);
+    msr.getMarkerSettings();
     //usleep(10000);
-    char *time_str2 = new char[500];
+    /*char *time_str2 = new char[500];
     auto t = msr.getEndTime();
     strftime(time_str2, 500, "%D - %T", &t);
-    std::cout << time_str2 << std::endl;
+    std::cout << time_str2 << std::endl;*/
 }

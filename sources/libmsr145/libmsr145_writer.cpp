@@ -188,6 +188,6 @@ void MSR_Writer::reset_limits()
 
 void MSR_Writer::set_marker_settings(bool marker_on, bool alarm_confirm_on)
 {
-    uint8_t set_cmd[] =  {0x89, 0x08, (uint8_t)marker_on, (uint8_t)alarm_confirm_on, 0xFF, 0xFF, 0xFF};
+    uint8_t set_cmd[] =  {0x89, 0x08, (uint8_t)marker_on, (uint8_t)alarm_confirm_on, 0x00, 0x00, 0x00};
     this->sendcommand(set_cmd, sizeof(set_cmd), nullptr, 8);
 }

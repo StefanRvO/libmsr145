@@ -79,6 +79,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual uint16_t readGeneralLimitSettings();
         virtual void readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
+        virtual void getMarkerSettings();
     protected:
         virtual std::vector<uint8_t> getRawRecording(rec_entry record);
         virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);

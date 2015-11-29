@@ -427,3 +427,16 @@ struct tm MSR_Reader::getEndTime()
     uint8_t command[] = {0x8C, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
     return getTime(command, sizeof(command));
 }
+
+void MSR_Reader::getMarkerSettings(bool *marker_on, bool *alarm_confirm_on)
+{
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    uint8_t get_cmd[] =  {0x88, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(get_cmd, sizeof(get_cmd), response, response_size);
+    for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
+    printf("\n");
+    *marker_on = response[2];
+    *alarm_confirm_on = response[3];
+    delete[] response;
+}
