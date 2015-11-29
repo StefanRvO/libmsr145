@@ -11,11 +11,15 @@ I have no idea if the software works for any other of the MSR dataloggers, or fo
 This is very much a work in progress, and the API will NOT be stable for the foreseable future.
 
 ###Working:
+
 #####General:
+
 * Setting baudrate(If the baudrate is set to more than 38400 b/s, the device hangs if too many commands is sent in a row, also the baudrate is reset to 9600 b/s if a command have not been send in ~5 seconds).
 * Calculation of 8-bit CRC checksum used by the protocol
 * Formatting the memory
+* 
 #####Reading:
+
 * Read name
 * Read Serial number
 * Read current time of device
@@ -28,7 +32,9 @@ This is very much a work in progress, and the API will NOT be stable for the for
 * Reader "Marker" settings
 * Read timer and sampling settings
 * Read LED blink settings
+* 
 #####Writing:
+
 * Set name
 * Set limits
 * Set "Marker" settings
@@ -38,6 +44,7 @@ This is very much a work in progress, and the API will NOT be stable for the for
 * Starting recording (and settings for start and stop condition, e.g button, time, etc.)
 
 ###Not Working:
+
 * Most things about calibration
 * Reading MSR type and firmware version
 * Everything not mentioned under "Working"
