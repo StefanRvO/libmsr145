@@ -21,19 +21,17 @@ int main()
         std::cout << std::endl;
     //}
     std::cout << std::endl;*/
-    msr.stopRecording();
-    /*usleep(100000);
-    msr.set_baud(9600 * 4);
+    msr.set_baud(9600 * 2);
 
     auto recordings = msr.getRecordinglist();
-    char *time_str = new char[500];
+    /*char *time_str = new char[500];
     std::cout << recordings.size() << std::endl;
     int k = 0;
     for(auto i : recordings)
     {
         strftime(time_str, 500, "%D - %T", &(i.time));
         printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.lenght);
-    }
+    }*/
     msr.set_baud(230400);
 
     std::vector<sample> samples;
@@ -42,15 +40,15 @@ int main()
     if(recordings.size())
     {
         samples = msr.getSamples(recordings[0]);
-        for(size_t j = 0; j < samples.size(); j++)
+        /*for(size_t j = 0; j < samples.size(); j++)
         {
             //if(samples[j].type == sampletype::humidity)
             {
                 printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / 512.);
             }
-        }
+        }*/
     }
-    msr.set_baud(9600);*/
+    msr.set_baud(9600);
         //printf("%u\n\n\n", i);
     //}*/
     /*msr.set_baud(230400);
@@ -88,6 +86,8 @@ int main()
         for(uint8_t i = 0; i < 8; i++) printf("%02X ", r[i]);
         printf("\n");
     }*/
+    msr.stopRecording();
+
     msr.reset_limits();
     msr.setTime();
     struct tm *timeset;
@@ -109,7 +109,6 @@ int main()
 
     msr.start_recording( startcondition::now, timeset, timeset, false);
     msr.set_marker_settings(true, true);
-    msr.getMarkerSettings();
     //usleep(10000);
     /*char *time_str2 = new char[500];
     auto t = msr.getEndTime();

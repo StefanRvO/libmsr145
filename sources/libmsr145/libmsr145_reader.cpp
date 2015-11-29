@@ -34,11 +34,11 @@ void MSR_Reader::convert_to_tm(uint8_t *response_ptr, struct tm *time_s)
     mktime(time_s);
 }
 
-struct tm MSR_Reader::getTime(uint8_t *command, uint8_t command_lenght)
+struct tm MSR_Reader::getTime(uint8_t *command, uint8_t command_length)
 {   //Returns the time returned by the command in "command"
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(command, command_lenght, response, response_size);
+    this->sendcommand(command, command_length, response, response_size);
     for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
     printf("\n");
     struct tm time_s;
@@ -53,11 +53,11 @@ struct tm MSR_Reader::getDeviceTime()
     return getTime(command, sizeof(command));
 }
 
-rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr)
+rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active)
 {
     rec_entry entry;
     entry.address = start_addr;
-    entry.lenght = end_addr - start_addr + 1;
+    entry.length = end_addr - start_addr + 1;
     //the timestamp of the entry is given in seconds since jan 1 2000
     //they are saved in the folowing parts of the response, ordered with msb first, lsb last
     //byte 3, byte 7, byte 6, byte 5(first 7 bits)
@@ -74,6 +74,7 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     entry.time.tm_sec = entry_time_seconds;
     entry.time.tm_isdst = -1;
     mktime(&(entry.time));
+    entry.isRecording = active;
     return entry;
 }
 std::vector<rec_entry> MSR_Reader::getRecordinglist()
@@ -112,7 +113,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
         start_address = (response[8] <<  8) + response[7];
         if(++end_address == 0x2000)
             end_address = 0x0000;
-        rec_entry first_entry = create_rec_entry(response, start_address, end_address);
+        rec_entry first_entry = create_rec_entry(response, start_address, end_address, true);
         rec_addresses.push_back(first_entry);
         start_address--;
         if(start_address == 0xFFFF)
@@ -141,7 +142,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
                 break;
             case 0x21: //this means that what we requested was the first page of the entry
                 //save the entry
-                new_entry = create_rec_entry(response, start_address, end_address);
+                new_entry = create_rec_entry(response, start_address, end_address, false);
                 rec_addresses.push_back(new_entry);
                 //the next entrys end adress will be this ones start minus 1
                 end_address = start_address - 1;
@@ -149,7 +150,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
                 { //if adress underflows, it should underflow to 0x1FFF, which is the highest mem location on the MSR145
                     end_address = 0x1FFF;
                 }
-                start_address = end_address; //set start adress as the same as end, so we don't fuckup on entries of lenght 1.
+                start_address = end_address; //set start adress as the same as end, so we don't fuckup on entries of length 1.
                 cur_address = end_address; //request next entrys end adress next
                 break;
             default:
@@ -166,15 +167,17 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
 
 std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
 { //recordings are read from the smallest memory location to the largest
+    if(!isRecording()) record.isRecording = false; //if we are not recording, this field is forced to be false.
     std::vector<uint8_t> recordData;
     size_t response_size = 0x0422;
     uint8_t *response = new uint8_t[response_size];
 
     //the fetch command. Format is:
-    //0x8B 0x00 0x00 <address lsb> <address msb> <lenght lsb> <lenght msb>
+    //0x8B 0x00 0x00 <address lsb> <address msb> <length lsb> <length msb>
     uint8_t fetch_command[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
-
-    for(uint16_t i = 0; i < record.lenght; i++)
+    //std::vector<uint8_t> page_recordData;
+    bool end = false;
+    for(uint16_t i = 0; (i < record.length || record.isRecording) && !end; i++)
     {
         //send the fetch command
         uint16_t cur_addr = record.address + i;
@@ -183,22 +186,87 @@ std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
         this->sendcommand(fetch_command, sizeof(fetch_command), response, response_size);
 
         //load the data into the vector. ignore first 9 bytes(for now), they are timestamp, etc
+        uint16_t start_pos;
         if(i == 0)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
-            for(uint16_t j = 0 +9 + 6 * 0xF + 2 ; j < response_size - 1; j++)
-            {
-                recordData.push_back(response[j]);
-            }
+          start_pos = 0 +9 + 6 * 0xF + 2;
         }
         else
         {
-            for(uint16_t j = 17; j < response_size - 1; j++)
-                recordData.push_back(response[j]);
+            start_pos = 17;
+        }
+        for(uint16_t j = start_pos; j < response_size - 1; j += 4)
+        {
+            if(response[j] == 0xFF && response[j + 1] == 0xFF && response[j + 2] == 0xFF && response[j + 3] == 0xFF)
+            {
+                end = true;
+                if(record.isRecording && j == start_pos)  //this means that we are trying to access the current page.
+                {
+                    GetLiveData(cur_addr, &recordData, i == 0);  //Fetch the data by other means.
+                    //printf("%d\n\n\n", j);
+                }
+                break;
+            }
+            for(uint8_t k = 0; k < 4; k++)
+                recordData.push_back(response[j + k]);
         }
     }
     delete[] response;
     return recordData;
+}
+
+void MSR_Reader::GetLiveData(uint16_t cur_addr,std::vector<uint8_t> *recording_data, bool isFirstPage)
+{   //Beware, this may contain bugs! Hard to debug, as the timing may be different each time.
+
+    //first, fetch the data from the "live" page, using the special command.
+    uint8_t start_pos = 17;
+    if(isFirstPage) start_pos = 0 +9 + 6 * 0xF + 2;
+    size_t response_size = 0x0422;
+    uint8_t *live_data = new uint8_t[response_size];
+    uint8_t *page_data = new uint8_t[response_size];
+    uint8_t get_live_length[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(get_live_length, sizeof(get_live_length), live_data, 8);
+    uint16_t length = ((live_data[6] << 8) + live_data[5]) * 2;
+
+    uint8_t get_live_page[] =   {0x8B, 0x00, 0x01, 0x00, 0x00, ((uint8_t)(length & 0xFF)), ((uint8_t)(length >> 8))};
+    this->sendcommand(get_live_page, sizeof(get_live_page), live_data, length + 2);
+    //check if the current address page is still unaccessable
+    uint8_t fetch_command[] = {0x8B, 0x00, 0x00, ((uint8_t)(cur_addr & 0xFF)), ((uint8_t)(cur_addr >> 8)), 0x20, 0x04};
+    this->sendcommand(fetch_command, sizeof(fetch_command), page_data, response_size);
+    if(!(page_data[start_pos + 0] == 0xFF && page_data[start_pos + 1] == 0xFF && page_data[start_pos + 2] == 0xFF && page_data[start_pos + 3] == 0xFF))
+    {
+        //the page have changed. first, fetch new live page
+        this->sendcommand(get_live_length, sizeof(get_live_length), live_data, 8);
+        length = ((live_data[6] << 8) + live_data[5]) * 2;
+        get_live_page[5] = length & 0xFF;
+        get_live_page[6] = length >> 8;
+        this->sendcommand(get_live_page, sizeof(get_live_page), live_data, length + 2);
+        //read page into vector
+        for(uint16_t i = start_pos; i < response_size - 1; i += 4)
+        {
+            if(page_data[i] == 0xFF && page_data[i + 1] == 0xFF && page_data[i + 2] == 0xFF && page_data[i + 3] == 0xFF)
+                break;
+            for(uint8_t j = 0; j < 4; j++)
+            {
+                recording_data->push_back(page_data[i + j]);
+            }
+        }
+        //startpos will be 17 now
+        start_pos = 17;
+    }
+    //read livedata into vector
+    for(uint16_t i = start_pos; i < length + 3; i += 4)
+    {
+        if(live_data[i] == 0xFF && live_data[i + 1] == 0xFF && live_data[i + 2] == 0xFF && live_data[i + 3] == 0xFF)
+            break;
+        for(uint8_t j = 0; j < 4; j++)
+        {
+            recording_data->push_back(live_data[i + j]);
+        }
+    }
+    delete[] live_data;
+    delete[] page_data;
 }
 
 std::vector<sample> MSR_Reader::getSamples(rec_entry record)

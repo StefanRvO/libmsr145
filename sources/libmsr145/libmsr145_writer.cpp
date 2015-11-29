@@ -39,7 +39,7 @@ void MSR_Writer::setTime(struct tm *timeset/* need to be a mktime() formated, eg
 
 void MSR_Writer::setName(std::string name)
 {
-    //if name is shorter than 12 characters (lenght of name), append spaces
+    //if name is shorter than 12 characters (length of name), append spaces
     //This is also done by the proprietary driver
     while(name.size() < 12)
         name.push_back(' ');

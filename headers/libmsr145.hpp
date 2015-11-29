@@ -17,7 +17,7 @@
 
 #define MSR_BUAD_RATE 9600
 #define MSR_STOP_BITS boost::asio::serial_port_base::stop_bits::one
-#define MSR_WORD_LENGHT 8
+#define MSR_WORD_length 8
 
 
 class MSR_Base
@@ -32,9 +32,9 @@ class MSR_Base
         virtual void set_baud(uint32_t baudrate);
         virtual void updateSensors(); //not really sure which class to put this in.
     protected:
-        virtual void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
-        virtual void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
-        virtual uint8_t calcChecksum(uint8_t *data, size_t lenght);
+        virtual void sendcommand(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
+        virtual void sendraw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
+        virtual uint8_t calcChecksum(uint8_t *data, size_t length);
 
 
 };
@@ -64,7 +64,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual std::string getSerialNumber();
         virtual std::string getName();
         virtual std::string getCalibrationName();
-        virtual struct tm getTime(uint8_t *command, uint8_t command_lenght);
+        virtual struct tm getTime(uint8_t *command, uint8_t command_length);
         virtual struct tm getDeviceTime();
         virtual struct tm getStartTime();
         virtual struct tm getEndTime();
@@ -79,11 +79,13 @@ class MSR_Reader : virtual public MSR_Base
         virtual uint16_t readGeneralLimitSettings();
         virtual void readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
-        virtual void getMarkerSettings();
+        virtual void getMarkerSettings(bool *marker_on, bool *alarm_confirm_on);
+        virtual void GetLiveData(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);
+
     protected:
         virtual std::vector<uint8_t> getRawRecording(rec_entry record);
         virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);
-        virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr);
+        virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active);
 };
 
 class MSRDevice : public MSR_Writer, public MSR_Reader

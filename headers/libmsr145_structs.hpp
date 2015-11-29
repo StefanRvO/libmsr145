@@ -5,7 +5,8 @@ struct rec_entry
 {
     uint16_t address;
     struct tm time;
-    uint16_t lenght;
+    uint16_t length;
+    bool isRecording;
 };
 
 struct sample
