@@ -107,7 +107,7 @@ int main()
 
 
 
-    msr.start_recording( startcondition::now, nullptr, timeset);
+    msr.start_recording( startcondition::now, nullptr, timeset, true);
     //msr.format_memory();
     /*char *time_str = new char[500];
     auto t = msr.getTime();

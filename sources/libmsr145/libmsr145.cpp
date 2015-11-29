@@ -452,10 +452,10 @@ void MSRDevice::stopRecording()
     this->sendcommand(stop_command, sizeof(stop_command), nullptr, 8);
 }
 void MSRDevice::start_recording(startcondition start_set,
-    struct tm *starttime, struct tm *stoptime)
+    struct tm *starttime, struct tm *stoptime, bool ringbuffer)
 {
     //command for setting up when a recording should start
-    uint8_t recording_setup[] = {0x84, 0x02, 0x01, 0x00, 0x01, 0x00, 0x00};
+    uint8_t recording_setup[] = {0x84, 0x02, 0x01, 0x00, (uint8_t)(!ringbuffer), 0x00, 0x00};
     if(starttime != nullptr)
     {
         uint8_t set_start_time[] = {0x8D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};

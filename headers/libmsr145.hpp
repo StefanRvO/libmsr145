@@ -113,7 +113,7 @@ class MSRDevice
         std::vector<sample> getSamples(rec_entry record);
         void setTime(struct tm *timeset = nullptr);
         void start_recording(startcondition start_set,
-            struct tm *starttime = nullptr, struct tm *stoptime = nullptr);
+            struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
         void stopRecording();
         void set_timer_interval(timer t, uint64_t interval);
         void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
