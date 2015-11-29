@@ -31,6 +31,8 @@ SET( CMAKE_CXX_FLAGS  "	-std=c++14 		\
 
 set (HEADER_DIR "${ROOT}/headers")
 set (HEADER_FILES ${HEADER_DIR}/libmsr145.hpp)
+set (HEADER_FILES ${HEADER_FILES} ${HEADER_DIR}/libmsr145_structs.hpp)
+set (HEADER_FILES ${HEADER_FILES} ${HEADER_DIR}/libmsr145_enums.hpp)
 
 include_directories(${HEADER_DIR})
 

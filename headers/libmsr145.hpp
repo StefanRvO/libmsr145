@@ -12,127 +12,72 @@
 #include <string>
 #include <ctime>
 #include <vector>
+#include "libmsr145_enums.hpp"
+#include "libmsr145_structs.hpp"
+
 #define MSR_BUAD_RATE 9600
 #define MSR_STOP_BITS boost::asio::serial_port_base::stop_bits::one
 #define MSR_WORD_LENGHT 8
 
-namespace active_measurement
-{
-    enum active_measurement
-    {
-        pressure = 1 << 0,
-        humidity = 1 << 2,
-        T1       = 1 << 3,
-        bat      = 1 << 4,
-    };
-}
 
-enum timer
+class MSR_Base
 {
-    t0 = 0x00, //called t1 by windows software.
-    t1 = 0x01,
-    t2 = 0x02,
-    t3 = 0x03,
-    t4 = 0x04,
-    t5 = 0x05,
-    t6 = 0x06, //called t2 by windows software.
-    t7 = 0x07, //used for setting blinkrate in windows software.
-};
-
-enum startcondition
-{
-    now,
-    push_start,
-    push_start_stop,
-    time_start,
-    time_start_stop,
-    time_stop,
-};
-
-enum limit_setting
-{
-    no_limit = 0x00,
-    rec_less_limit2 = 0x01,
-    rec_more_limit2 = 0x02,
-    rec_more_limit1_and_less_limit2 = 0x03,
-    rec_less_limit1_or_more_limit2 = 0x04,
-    rec_start_more_limit1_stop_less_limit2 = 0x05,
-    rec_start_less_limit1_stop_more_limit2 = 0x06,
-    alarm_less_limit1 = 0x01 << 3,
-    alarm_more_limit1 = 0x02 << 3,
-    alarm_more_limit1_and_less_limit2 = 0x03 << 3,
-    alarm_ess_limit1_or_more_limit2 = 0x04 << 3,
-
-};
-
-enum sampletype
-{
-    pressure = 0x0,
-    T_pressure = 0x1,
-    humidity = 0x5,
-    T_humidity = 0x6,
-    bat = 0xE,
-    ext1 = 0xA,
-    ext2 = 0xB,
-    ext3 = 0xC,
-    ext4 = 0x7,
-    timestamp = 0xF,
-    end = 0xFFFF,
-    none = 0x55, //Just a placeholder for none for use in getSensorData
-};
-
-struct rec_entry
-{
-    uint16_t address;
-    struct tm time;
-    uint16_t lenght;
-};
-
-struct sample
-{
-    sampletype type;
-    int16_t value;
-    uint64_t timestamp; //this is the time since the start of the recording in 1/512 seconds
-    uint32_t rawsample; //for debugging
-};
-
-class MSRDevice
-{
-    private:
+    protected:
         boost::asio::serial_port *port;
         boost::asio::io_service ioservice;
         std::string portname;
     public:
-        MSRDevice(std::string _portname);
-        ~MSRDevice();
-        std::string getSerialNumber();
-        std::string getName();
-        struct tm getTime();
-        void setName(std::string name);
-        std::vector<rec_entry> getRecordinglist(); //only work when recording is not active
-        std::vector<sample> getSamples(rec_entry record);
-        void setTime(struct tm *timeset = nullptr);
-        void start_recording(startcondition start_set,
-            struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
-        void stopRecording();
-        void set_timer_interval(timer t, uint64_t interval);
-        void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
-        void format_memory();
-        void set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
-            limit_setting record_limit, limit_setting alarm_limit);
-        void reset_limits();
-        void set_marker_settings(bool marker_on, bool alarm_confirm_on);
-    public:
-        void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
-        void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
-        uint8_t calcChecksum(uint8_t *data, size_t lenght);
-        std::vector<uint8_t> getRawRecording(rec_entry record);
-        void set_baud(uint32_t baudrate);
-        sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);
-        rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr);
-        void updateSensors();
-        void getSensorData(int16_t *returnvalues, sampletype type1 = sampletype::none,
-            sampletype type2 = sampletype::none, sampletype type3 = sampletype::none);
+        MSR_Base(std::string _portname);
+        virtual ~MSR_Base();
+        virtual void set_baud(uint32_t baudrate);
+        virtual void updateSensors(); //not really sure which class to put this in.
+    protected:
+        virtual void sendcommand(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
+        virtual void sendraw(uint8_t * command, size_t command_lenght, uint8_t *out, size_t out_lenght);
+        virtual uint8_t calcChecksum(uint8_t *data, size_t lenght);
 
+
+};
+
+class MSR_Writer : virtual public MSR_Base
+{
+    public:
+        MSR_Writer(std::string _portname) : MSR_Base(_portname) {};
+        virtual void setName(std::string name);
+        virtual void setTime(struct tm *timeset = nullptr);
+        virtual void start_recording(startcondition start_set,
+            struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
+        virtual void stopRecording();
+        virtual void set_timer_interval(timer t, uint64_t interval);
+        virtual void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
+        virtual void format_memory();
+        virtual void set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
+            limit_setting record_limit, limit_setting alarm_limit);
+        virtual void reset_limits();
+        virtual void set_marker_settings(bool marker_on, bool alarm_confirm_on);
+};
+
+class MSR_Reader : virtual public MSR_Base
+{
+    public:
+        MSR_Reader(std::string _portname) : MSR_Base(_portname) {};
+        virtual std::string getSerialNumber();
+        virtual std::string getName();
+        virtual struct tm getTime();
+        virtual std::vector<rec_entry> getRecordinglist(); //only work when recording is not active
+        virtual std::vector<sample> getSamples(rec_entry record);
+        virtual void getSensorData(int16_t *returnvalues, sampletype type1 = sampletype::none,
+            sampletype type2 = sampletype::none, sampletype type3 = sampletype::none);
+    protected:
+        virtual std::vector<uint8_t> getRawRecording(rec_entry record);
+        virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);
+        virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr);
+};
+
+class MSRDevice : public MSR_Writer, public MSR_Reader
+{
+    public:
+        MSRDevice(std::string _portname) :
+        MSR_Base(_portname), MSR_Writer(_portname), MSR_Reader(_portname) {};
 
 };
