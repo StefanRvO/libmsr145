@@ -34,7 +34,7 @@ class MSR_Base
         virtual void format_memory();
         virtual void stopRecording();
         virtual bool isRecording();
-    protected:
+    public: //protected:
         virtual void sendcommand(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual void sendraw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual uint8_t calcChecksum(uint8_t *data, size_t length);

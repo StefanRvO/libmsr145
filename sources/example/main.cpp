@@ -5,6 +5,8 @@ int main()
 {
     MSRDevice msr("/dev/ttyUSB0");
     if(msr.isRecording()) msr.stopRecording();
+    //uint8_t cmd[] = {0x8B, 0x00, 0x00, 0x04, 0x00, 0x20, 0x04};
+    //std::cout << (int)msr.calcChecksum(cmd, sizeof(cmd)) << std::endl;
     usleep(10000);
     //msr.format_memory();
     /*char *time_str = new char[500];
@@ -93,14 +95,13 @@ int main()
     usleep(5000000);
     msr.reset_limits();
     msr.setTime();
-    //for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_interval((timer)1, 511);
-        msr.set_timer_interval((timer)2, 512);
+    for(uint8_t i = 0; i < 8; i++)
+        msr.set_timer_interval((timer)i, rand() % 400 + 10);
 
     for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_measurements((timer)i, 0, 0);
-    msr.set_timer_measurements((timer)1, active_measurement::humidity, 1);
-    msr.set_timer_measurements((timer)2, active_measurement::pressure, 1);
+        msr.set_timer_measurements((timer)i, active_measurement::humidity | active_measurement::pressure, 1);
+    //msr.set_timer_measurements((timer)1, active_measurement::humidity, 1);
+    //msr.set_timer_measurements((timer)2, active_measurement::pressure, 1);
 
     //msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::rec_start_more_limit1_stop_less_limit2);
     //msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);

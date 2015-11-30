@@ -34,13 +34,13 @@ void MSR_Base::sendcommand(uint8_t *command, size_t command_length,
     auto checksum = calcChecksum(command, command_length);
     do
     {
-        //for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
+        for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
         write(*(this->port), buffer(command, command_length));
         write(*(this->port), buffer(&checksum, sizeof(checksum)));
         size_t read_bytes = read(*(this->port), buffer(out, out_length), transfer_exactly(out_length));
         assert(read_bytes == out_length);
         assert(out_length == 0 || (out[out_length - 1] == calcChecksum(out, out_length - 1)));
-        //for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
+        for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
     } while(out_length && (out[0] & 0x20) ); // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
 }
