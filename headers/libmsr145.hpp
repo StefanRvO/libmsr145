@@ -26,6 +26,7 @@ class MSR_Base
         boost::asio::serial_port *port;
         boost::asio::io_service ioservice;
         std::string portname;
+        boost::asio::deadline_timer *read_timer;
     public:
         MSR_Base(std::string _portname);
         virtual ~MSR_Base();

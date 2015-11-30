@@ -17,7 +17,6 @@ This is very much a work in progress, and the API will NOT be stable for the for
 * Setting baudrate(If the baudrate is set to more than 38400 b/s, the device hangs if too many commands is sent in a row, also the baudrate is reset to 9600 b/s if a command have not been send in ~5 seconds).
 * Calculation of 8-bit CRC checksum used by the protocol
 * Formatting the memory
-* 
 #####Reading:
 
 * Read name
@@ -27,9 +26,9 @@ This is very much a work in progress, and the API will NOT be stable for the for
 * Read recording start/stop time
 * Read limit settings
 * Getting live sensor data
-* Read samples from recording (not 100% working when reading an active record)
+* Read samples from recording (not tested with ringbuffer, probably don't work)
 * List recordings on device
-* Reader "Marker" settings
+* Read "Marker" settings
 * Read timer and sampling settings
 * Read LED blink settings
 * 
@@ -48,3 +47,12 @@ This is very much a work in progress, and the API will NOT be stable for the for
 * Most things about calibration
 * Reading MSR type and firmware version
 * Everything not mentioned under "Working"
+
+###Known bugs:
+* Sometimes the communication with the MSR device will stall, and refuse to transfer more than a couple of commands at a time.
+
+##TODO
+* Implement calibration set and read commands.
+* Fix bugs
+* Improve interface and make it consistent
+* Implement command-line tool on top of the library

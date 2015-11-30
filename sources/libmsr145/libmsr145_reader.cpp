@@ -169,7 +169,6 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
 
 std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
 { //recordings are read from the smallest memory location to the largest
-    //this->set_baud(230400);
     if(!isRecording()) record.isRecording = false; //if we are not recording, this field is forced to be false.
     std::vector<uint8_t> recordData;
     size_t response_size = 0x0422;
@@ -180,6 +179,7 @@ std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
     uint8_t fetch_command[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
     //std::vector<uint8_t> page_recordData;
     bool end = false;
+    this->set_baud(230400);
     for(uint16_t i = 0; (i < record.length || record.isRecording) && !end; i++)
     {
         //send the fetch command

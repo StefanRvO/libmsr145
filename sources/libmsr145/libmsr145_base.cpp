@@ -70,6 +70,8 @@ MSR_Base::MSR_Base(std::string _portname)
     this->port->set_option(serial_port_base::baud_rate( MSR_BUAD_RATE ));
     this->port->set_option(serial_port_base::stop_bits( MSR_STOP_BITS ));
     this->port->set_option(serial_port_base::character_size( MSR_WORD_length ));
+    //read_timer = new deadline_timer(this->ioservice);
+
 }
 
 MSR_Base::~MSR_Base()

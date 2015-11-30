@@ -27,14 +27,14 @@ int main()
     //}
     std::cout << std::endl;*/
     auto recordings = msr.getRecordinglist();
-    /*char *time_str = new char[500];
+    char *time_str = new char[500];
     std::cout << recordings.size() << std::endl;
     int k = 0;
     for(auto i : recordings)
     {
         strftime(time_str, 500, "%D - %T", &(i.time));
-        printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.lenght);
-    }*/
+        printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.length);
+    }
     //msr.set_baud(230400);
     std::cout << recordings.size() << std::endl;
     std::vector<sample> samples;
@@ -43,14 +43,14 @@ int main()
 
     if(recordings.size())
     {
-        samples = msr.getSamples(recordings[0]);
+        /*samples = msr.getSamples(recordings[0]);
         for(size_t j = 0; j < samples.size(); j++)
         {
             //if(samples[j].type == sampletype::humidity)
             {
                 printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / (float)(512));
             }
-        }
+        }*/
     }
         //printf("%u\n\n\n", i);
     //}*/
