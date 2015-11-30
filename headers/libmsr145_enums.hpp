@@ -60,6 +60,7 @@ enum sampletype
     ext3 = 0xC,
     ext4 = 0x7,
     timestamp = 0xF,
+    unknown1 = 0x0D, //may be marker??
     end = 0xFFFF,
     none = 0x55, //Just a placeholder for none for use in getSensorData
 };

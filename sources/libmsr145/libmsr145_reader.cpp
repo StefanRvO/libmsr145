@@ -167,6 +167,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
 
 std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
 { //recordings are read from the smallest memory location to the largest
+    this->set_baud(230400);
     if(!isRecording()) record.isRecording = false; //if we are not recording, this field is forced to be false.
     std::vector<uint8_t> recordData;
     size_t response_size = 0x0422;
@@ -212,6 +213,7 @@ std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
                 recordData.push_back(response[j + k]);
         }
     }
+    this->set_baud(9600);
     delete[] response;
     return recordData;
 }
@@ -225,6 +227,7 @@ void MSR_Reader::GetLiveData(uint16_t cur_addr,std::vector<uint8_t> *recording_d
     size_t response_size = 0x0422;
     uint8_t *live_data = new uint8_t[response_size];
     uint8_t *page_data = new uint8_t[response_size];
+    //std::vector<uint8_t> data;
     uint8_t get_live_length[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
     this->sendcommand(get_live_length, sizeof(get_live_length), live_data, 8);
     uint16_t length = ((live_data[6] << 8) + live_data[5]) * 2;
@@ -250,21 +253,25 @@ void MSR_Reader::GetLiveData(uint16_t cur_addr,std::vector<uint8_t> *recording_d
             for(uint8_t j = 0; j < 4; j++)
             {
                 recording_data->push_back(page_data[i + j]);
+                //data.push_back(page_data[i + j]);
             }
         }
         //startpos will be 17 now
         start_pos = 17;
     }
     //read livedata into vector
-    for(uint16_t i = start_pos; i < length + 3; i += 4)
+    for(uint16_t i = start_pos; i < length - 1; i += 4)
     {
         if(live_data[i] == 0xFF && live_data[i + 1] == 0xFF && live_data[i + 2] == 0xFF && live_data[i + 3] == 0xFF)
             break;
         for(uint8_t j = 0; j < 4; j++)
         {
             recording_data->push_back(live_data[i + j]);
+            //data.push_back(live_data[i + j]);
+
         }
     }
+    //for(size_t i = 0; i < data.size(); i+=4) printf("%02X %02X %02X %02X\n", data[i], data[i + 1], data[i +2], data[i + 3]);
     delete[] live_data;
     delete[] page_data;
 }
