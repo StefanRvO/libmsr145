@@ -11,6 +11,15 @@
 #include <string>
 #include <cstdio>
 
+void MSR_Writer::insert_time_in_command(struct tm *timeset, uint8_t *command)
+{
+    command[2] = timeset->tm_min;
+    command[3] = timeset->tm_hour + ((timeset->tm_sec & 0x7) << 5);
+    command[4] = (timeset->tm_mday - 1) + ((timeset->tm_sec >> 3) << 5);
+    command[5] = timeset->tm_mon;
+    command[6] = timeset->tm_year - 100;
+}
+
 void MSR_Writer::setTime(struct tm *timeset/* need to be a mktime() formated, eg not have more than 60 seconds*/)
 {
     //if nullptr, set to local time
@@ -20,17 +29,9 @@ void MSR_Writer::setTime(struct tm *timeset/* need to be a mktime() formated, eg
         time(&rawtime);
         timeset = localtime(&rawtime);
     }
-    uint8_t command[] = {0x8D, 0x00,
-        0x00 /*minutes*/,
-        0x00 /*hours*, 3 highest is lsb seconds*/,
-        0x00/*days 3 highest is msb seconds*/,
-        0x00/* month*/,
-        0x00/*year*/};
-    command[2] = timeset->tm_min;
-    command[3] = timeset->tm_hour + ((timeset->tm_sec & 0x7) << 5);
-    command[4] = (timeset->tm_mday - 1) + ((timeset->tm_sec >> 3) << 5);
-    command[5] = timeset->tm_mon;
-    command[6] = timeset->tm_year - 100;
+    uint8_t command[] = {0x8D, 0x00, 0x00 /*minutes*/, 0x00 /*hours*, 3 highest is lsb seconds*/,
+        0x00/*days 3 highest is msb seconds*/, 0x00/* month*/, 0x00/*year*/};
+    insert_time_in_command(timeset, command);
 
     this->sendcommand(command, sizeof(command), nullptr, 8);
 }
@@ -78,21 +79,13 @@ void MSR_Writer::start_recording(startcondition start_set,
     if(starttime != nullptr)
     {
         uint8_t set_start_time[] = {0x8D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
-        set_start_time[2] = starttime->tm_min;
-        set_start_time[3] = starttime->tm_hour + ((starttime->tm_sec & 0x7) << 5);
-        set_start_time[4] = (starttime->tm_mday - 1) + ((starttime->tm_sec >> 3) << 5);
-        set_start_time[5] = starttime->tm_mon;
-        set_start_time[6] = starttime->tm_year - 100;
+        insert_time_in_command(starttime, set_start_time);
         this->sendcommand(set_start_time, sizeof(set_start_time), nullptr, 8);
     }
     if(stoptime != nullptr)
     {
         uint8_t set_stop_time[] = {0x8D, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
-        set_stop_time[2] = stoptime->tm_min;
-        set_stop_time[3] = stoptime->tm_hour + ((stoptime->tm_sec & 0x7) << 5);
-        set_stop_time[4] = (stoptime->tm_mday - 1) + ((stoptime->tm_sec >> 3) << 5);
-        set_stop_time[5] = stoptime->tm_mon;
-        set_stop_time[6] = stoptime->tm_year - 100;
+        insert_time_in_command(stoptime, set_stop_time);
         this->sendcommand(set_stop_time, sizeof(set_stop_time), nullptr, 8);
     }
     switch(start_set)

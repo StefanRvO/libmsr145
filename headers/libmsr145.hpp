@@ -61,6 +61,7 @@ class MSR_Writer : virtual public MSR_Base
         virtual void set_marker_settings(bool marker_on, bool alarm_confirm_on);
         virtual void set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
             uint16_t point_2_target, uint16_t point_2_actual);
+        virtual void insert_time_in_command(struct tm *timeset, uint8_t *command);
 };
 
 class MSR_Reader : virtual public MSR_Base
