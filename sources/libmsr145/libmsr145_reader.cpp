@@ -325,9 +325,11 @@ sample MSR_Reader::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
             //it's a flag. If set, the time is in seconds, else it's in 1/512 seconds.
             //There is still something a bit wrong with this part.
             if(time_bits & 0x0800)
-                *total_time += (time_bits & 0x07FF) * 512;
+                *total_time += (time_bits & 0x03FF) * 512 << 8;
+            else if(time_bits & 0x0400)
+                *total_time += (time_bits & 0x03FF)
             else
-                *total_time += (time_bits & 0x07FF);
+                *total_time += (time_bits & 0x03FF) * 512;
             break;
         }
         case sampletype::timestamp:
@@ -335,7 +337,7 @@ sample MSR_Reader::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
             //this is a special type, which is used when the timediff can't fit into the normal sample
             //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
             uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
-            timediff *= 256; //the unit of total_time is 1/512 seconds
+            timediff *= 256 << 8; //the unit of total_time is 1/512 seconds
             *total_time += timediff;
             break;
         }

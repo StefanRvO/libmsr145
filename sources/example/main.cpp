@@ -4,6 +4,7 @@
 int main()
 {
     MSRDevice msr("/dev/ttyUSB0");
+    msr.stopRecording();
     /*char *time_str = new char[500];
     auto t = msr.getTime();
     strftime(time_str, 500, "%D - %T", &t);
@@ -42,7 +43,7 @@ int main()
         {
             //if(samples[j].type == sampletype::humidity)
             {
-                printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / 512.);
+                printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / (float)(512 << 8));
             }
         }
     }
