@@ -34,6 +34,7 @@ void MSR_Base::sendcommand(uint8_t *command, size_t command_length,
     auto checksum = calcChecksum(command, command_length);
     do
     {
+        //for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
         write(*(this->port), buffer(command, command_length));
         write(*(this->port), buffer(&checksum, sizeof(checksum)));
         size_t read_bytes = read(*(this->port), buffer(out, out_length), transfer_exactly(out_length));
@@ -119,4 +120,48 @@ void MSR_Base::updateSensors()
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
     this->sendcommand(command, sizeof(command), nullptr, 8);
     usleep(20000); //needed to prevent staaling when doing many succesive calls
+}
+
+void MSR_Base::format_memory()
+{
+    stopRecording(); //stop current recording before format.
+    uint16_t start_address = 0x0000;
+    uint16_t end_address = 0x03FF;
+    uint8_t erase_cmd[] = {0x8A, 0x06, 0x00,
+        0x00 /*adress lsb*/, 0x00 /*address msb*/,
+        0x5A, 0xA5};
+    uint8_t start_cmd1[] = {0x8A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(start_cmd1, sizeof(start_cmd1), nullptr, 8);
+
+    uint8_t confirm_command[] = {0x8A, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t *returnval = new uint8_t[8];
+    for(uint16_t addr = start_address; addr <= end_address; addr++)
+    {
+        erase_cmd[3] = addr & 0xFF;
+        erase_cmd[4] = addr >> 8;
+        this->sendcommand(erase_cmd, sizeof(erase_cmd), returnval, 8);
+        do
+        {
+            this->sendcommand(confirm_command, sizeof(confirm_command), returnval, 8);
+        } while(returnval[1] != 0xBC);
+    }
+    delete[] returnval;
+}
+
+void MSR_Base::stopRecording()
+{
+    if(!(this->isRecording())) return;
+    uint8_t stop_command[] = {0x86, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(stop_command, sizeof(stop_command), nullptr, 8);
+}
+
+bool MSR_Base::isRecording()
+{
+    uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    size_t response_size = 8;
+    uint8_t *response = new uint8_t[response_size];
+    this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
+    bool recording_active = (response[1] == 0x83); //this byte defines if the device is currently recording
+    delete[] response;
+    return recording_active;
 }

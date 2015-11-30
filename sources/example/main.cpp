@@ -4,7 +4,9 @@
 int main()
 {
     MSRDevice msr("/dev/ttyUSB0");
-    msr.stopRecording();
+    if(msr.isRecording()) msr.stopRecording();
+    usleep(10000);
+    //msr.format_memory();
     /*char *time_str = new char[500];
     auto t = msr.getTime();
     strftime(time_str, 500, "%D - %T", &t);
@@ -32,10 +34,11 @@ int main()
         printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.lenght);
     }*/
     //msr.set_baud(230400);
-
+    std::cout << recordings.size() << std::endl;
     std::vector<sample> samples;
     //for(uint8_t i = 0; i< recordings.size(); i++)
     //{
+
     if(recordings.size())
     {
         samples = msr.getSamples(recordings[0]);
@@ -43,7 +46,7 @@ int main()
         {
             //if(samples[j].type == sampletype::humidity)
             {
-                printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / (float)(512 << 8));
+                printf("%08X\t %02X\t %d\t %f\n", samples[j].rawsample, (int)samples[j].type, samples[j].value, samples[j].timestamp / (float)(512));
             }
         }
     }
@@ -84,29 +87,26 @@ int main()
         for(uint8_t i = 0; i < 8; i++) printf("%02X ", r[i]);
         printf("\n");
     }*/
-    /*
-    msr.set_baud(9600);
-    msr.stopRecording();
 
+    //msr.set_baud(9600);
+    //
+    usleep(5000000);
     msr.reset_limits();
     msr.setTime();
-    struct tm *timeset;
-    time_t rawtime;
-    time(&rawtime);
-    timeset = localtime(&rawtime);
-    timeset->tm_year+=2;
-    mktime(timeset);
+    //for(uint8_t i = 0; i < 8; i++)
+        msr.set_timer_interval((timer)1, 511);
+        msr.set_timer_interval((timer)2, 512);
+
     for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_interval((timer)4, 400);
-    for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_measurements((timer)i, active_measurement::humidity | active_measurement::pressure | active_measurement::bat | active_measurement::T1, 1);
-*/
+        msr.set_timer_measurements((timer)i, 0, 0);
+    msr.set_timer_measurements((timer)1, active_measurement::humidity, 1);
+    msr.set_timer_measurements((timer)2, active_measurement::pressure, 1);
+
     //msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::rec_start_more_limit1_stop_less_limit2);
     //msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
     //msr.set_limit(sampletype::pressure, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
-
-    //msr.start_recording( startcondition::now, nullptr, nullptr, false);
-    //msr.set_marker_settings(true, true);
+    msr.set_marker_settings(false, false);
+    msr.start_recording( startcondition::now, nullptr, nullptr, false);
     //usleep(10000);
     /*char *time_str2 = new char[500];
     auto t = msr.getEndTime();

@@ -31,6 +31,9 @@ class MSR_Base
         virtual ~MSR_Base();
         virtual void set_baud(uint32_t baudrate);
         virtual void updateSensors(); //not really sure which class to put this in.
+        virtual void format_memory();
+        virtual void stopRecording();
+        virtual bool isRecording();
     protected:
         virtual void sendcommand(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual void sendraw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
@@ -47,10 +50,8 @@ class MSR_Writer : virtual public MSR_Base
         virtual void setTime(struct tm *timeset = nullptr);
         virtual void start_recording(startcondition start_set,
             struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
-        virtual void stopRecording();
         virtual void set_timer_interval(timer t, uint64_t interval);
         virtual void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
-        virtual void format_memory();
         virtual void set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
             limit_setting record_limit, limit_setting alarm_limit);
         virtual void reset_limits();
@@ -74,14 +75,12 @@ class MSR_Reader : virtual public MSR_Base
             sampletype type2 = sampletype::none, sampletype type3 = sampletype::none);
         virtual uint32_t getTimerInterval(timer t);
         virtual void getActivatedMeasurements(timer t, uint8_t *measurements, bool *blink);
-        virtual bool isRecording();
         virtual void readStartSetting(bool *bufferon, startcondition *start);
         virtual uint16_t readGeneralLimitSettings();
         virtual void readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
         virtual void getMarkerSettings(bool *marker_on, bool *alarm_confirm_on);
         virtual void GetLiveData(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);
-
     protected:
         virtual std::vector<uint8_t> getRawRecording(rec_entry record);
         virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);

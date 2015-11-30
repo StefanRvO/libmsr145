@@ -153,6 +153,8 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
                 start_address = end_address; //set start adress as the same as end, so we don't fuckup on entries of length 1.
                 cur_address = end_address; //request next entrys end adress next
                 break;
+            case 0xFF:
+                return rec_addresses;
             default:
                 printf("ERROR!!!!!\n"); //this should never happend
                 break;
@@ -323,13 +325,11 @@ sample MSR_Reader::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
             time_bits += sample_ptr[0];
             //the 5'th (highest) bit is not actually a part of the time.
             //it's a flag. If set, the time is in seconds, else it's in 1/512 seconds.
-            //There is still something a bit wrong with this part.
+            //The last 11 bits is a signed int.
             if(time_bits & 0x0800)
-                *total_time += (time_bits & 0x03FF) * 512 << 8;
-            else if(time_bits & 0x0400)
-                *total_time += (time_bits & 0x03FF)
+                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (512);
             else
-                *total_time += (time_bits & 0x03FF) * 512;
+                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 );
             break;
         }
         case sampletype::timestamp:
@@ -337,7 +337,7 @@ sample MSR_Reader::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
             //this is a special type, which is used when the timediff can't fit into the normal sample
             //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
             uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
-            timediff *= 256 << 8; //the unit of total_time is 1/512 seconds
+            timediff *= 256; //the unit of total_time is 1/512 seconds
             *total_time += timediff;
             break;
         }
@@ -427,17 +427,6 @@ void MSR_Reader::getActivatedMeasurements(timer t, uint8_t *measurements, bool *
     *measurements = response[3];
     *blink = response[6];
     delete[] response;
-}
-
-bool MSR_Reader::isRecording()
-{
-    uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    size_t response_size = 8;
-    uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
-    bool recording_active = (response[1] == 0x83); //this byte defines if the device is currently recording
-    delete[] response;
-    return recording_active;
 }
 
 void MSR_Reader::readStartSetting(bool *bufferon, startcondition *start)
