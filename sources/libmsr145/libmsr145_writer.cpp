@@ -35,13 +35,17 @@ void MSR_Writer::setTime(struct tm *timeset/* need to be a mktime() formated, eg
     this->sendcommand(command, sizeof(command), nullptr, 8);
 }
 
-void MSR_Writer::setNames(std::string deviceName, std::string calibrationName)
-{
+void MSR_Writer::setNamesAndCalibrationDate(std::string deviceName, std::string calibrationName,
+    uint8_t year, uint8_t month, uint8_t day)
+{   //These three settings needs to be set together, as they corrupt eachother if they are not.
+    //years start at 0 = 2000.
+    //months start at 0 = january.
+    //Day start at 0 = 1th.
     //if name is shorter than 12 characters (length of name), append spaces
     //This is also done by the proprietary driver
     while(deviceName.size() < 12)
         deviceName.push_back(' ');
-    while(calibrationName.size() < 12)
+    while(calibrationName.size() < 8)
         calibrationName.push_back(' ');
 
     //this is some kind of "setup command" without it, the device won't accept the next commands
@@ -51,9 +55,9 @@ void MSR_Writer::setNames(std::string deviceName, std::string calibrationName)
     uint8_t command_2[] = {0x84, 0x05, 0x00, (uint8_t)deviceName[0], (uint8_t)deviceName[1], (uint8_t)deviceName[2], (uint8_t)deviceName[3]};
     uint8_t command_3[] = {0x84, 0x05, 0x01, (uint8_t)deviceName[4], (uint8_t)deviceName[5], (uint8_t)deviceName[6], (uint8_t)deviceName[7]};
     uint8_t command_4[] = {0x84, 0x05, 0x02, (uint8_t)deviceName[8], (uint8_t)deviceName[9], (uint8_t)deviceName[10], (uint8_t)deviceName[11]};
-    uint8_t command_5[] = {0x84, 0x05, 0x03, (uint8_t)calibrationName[0], (uint8_t)calibrationName[1], (uint8_t)calibrationName[2], (uint8_t)calibrationName[3]};
-    uint8_t command_6[] = {0x84, 0x05, 0x04, (uint8_t)calibrationName[4], (uint8_t)calibrationName[5], (uint8_t)calibrationName[6], (uint8_t)calibrationName[7]};
-    uint8_t command_7[] = {0x84, 0x05, 0x05, (uint8_t)calibrationName[8], (uint8_t)calibrationName[9], (uint8_t)calibrationName[10], (uint8_t)calibrationName[11]};
+    uint8_t command_5[] = {0x84, 0x05, 0x03, year, month, day, 0x05};
+    uint8_t command_6[] = {0x84, 0x05, 0x04, (uint8_t)calibrationName[0], (uint8_t)calibrationName[1], (uint8_t)calibrationName[2], (uint8_t)calibrationName[3]};
+    uint8_t command_7[] = {0x84, 0x05, 0x05, (uint8_t)calibrationName[4], (uint8_t)calibrationName[5], (uint8_t)calibrationName[6], (uint8_t)calibrationName[7]};
 
     this->sendcommand(command_1, sizeof(command_1), nullptr, 8);
     this->sendcommand(command_2, sizeof(command_2), nullptr, 8);
@@ -168,4 +172,15 @@ void MSR_Writer::set_marker_settings(bool marker_on, bool alarm_confirm_on)
 {
     uint8_t set_cmd[] =  {0x89, 0x08, (uint8_t)marker_on, (uint8_t)alarm_confirm_on, 0x00, 0x00, 0x00};
     this->sendcommand(set_cmd, sizeof(set_cmd), nullptr, 8);
+}
+
+void MSR_Writer::set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
+    uint16_t point_2_target, uint16_t point_2_actual)
+{   //may need to be set before each recording (not throughly investigated yet.)
+    uint8_t getpoint1[] = {0x89, 0x0C, (uint8_t)type, (uint8_t)(point_1_target & 0xFF), (uint8_t)(point_1_target >> 8),
+        (uint8_t)(point_1_actual & 0xFF), (uint8_t)(point_1_actual >> 8)};
+    uint8_t getpoint2[] = {0x89, 0x0D, (uint8_t)type, (uint8_t)(point_2_target & 0xFF), (uint8_t)(point_2_target >> 8),
+        (uint8_t)(point_2_actual & 0xFF), (uint8_t)(point_2_actual >> 8)};
+    this->sendcommand(getpoint1, sizeof(getpoint1), nullptr, 8);
+    this->sendcommand(getpoint2, sizeof(getpoint2), nullptr, 8);
 }

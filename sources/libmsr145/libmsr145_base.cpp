@@ -21,16 +21,18 @@ uint8_t MSR_Base::calcChecksum(uint8_t *data, size_t length)
     crc.process_bytes(data, length);
     return crc.checksum();
 }
-void MSR_Base::sendcommand(uint8_t *command, size_t command_length,
+int MSR_Base::sendcommand(uint8_t *command, size_t command_length,
                             uint8_t *out, size_t out_length)
+    //Returns 0 on success
 {
+    int returncode = 0;
+    uint8_t tries = 0;
     bool selfalloced = false;
     if(out == nullptr && out_length > 0)
     {
         selfalloced = true;
         out = new uint8_t[out_length];
     }
-
     auto checksum = calcChecksum(command, command_length);
     do
     {
@@ -41,8 +43,10 @@ void MSR_Base::sendcommand(uint8_t *command, size_t command_length,
         assert(read_bytes == out_length);
         assert(out_length == 0 || (out[out_length - 1] == calcChecksum(out, out_length - 1)));
         for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
-    } while(out_length && (out[0] & 0x20) ); // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
+    }   while(out_length && (out[0] & 0x20) && ++tries < 3 );
+    if(out_length && (out[0] & 0x20) ) returncode = 1; // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
+    return returncode;
 }
 
 void MSR_Base::sendraw(uint8_t *command, size_t command_length,

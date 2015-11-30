@@ -36,7 +36,7 @@ class MSR_Base
         virtual void stopRecording();
         virtual bool isRecording();
     public: //protected:
-        virtual void sendcommand(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
+        virtual int sendcommand(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual void sendraw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual uint8_t calcChecksum(uint8_t *data, size_t length);
 
@@ -47,7 +47,8 @@ class MSR_Writer : virtual public MSR_Base
 {
     public:
         MSR_Writer(std::string _portname) : MSR_Base(_portname) {};
-        virtual void setNames(std::string deviceName, std::string calibrationName);
+        virtual void setNamesAndCalibrationDate(std::string deviceName, std::string calibrationName,
+            uint8_t year, uint8_t month, uint8_t day);
 
         virtual void setTime(struct tm *timeset = nullptr);
         virtual void start_recording(startcondition start_set,
@@ -58,6 +59,8 @@ class MSR_Writer : virtual public MSR_Base
             limit_setting record_limit, limit_setting alarm_limit);
         virtual void reset_limits();
         virtual void set_marker_settings(bool marker_on, bool alarm_confirm_on);
+        virtual void set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
+            uint16_t point_2_target, uint16_t point_2_actual);
 };
 
 class MSR_Reader : virtual public MSR_Base
@@ -83,6 +86,9 @@ class MSR_Reader : virtual public MSR_Base
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
         virtual void getMarkerSettings(bool *marker_on, bool *alarm_confirm_on);
         virtual void GetLiveData(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);
+        virtual void read_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
+            uint16_t *point_2_target, uint16_t *point_2_actual);
+
     protected:
         virtual std::vector<uint8_t> getRawRecording(rec_entry record);
         virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);

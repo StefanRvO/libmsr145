@@ -396,7 +396,7 @@ std::string MSR_Reader::getCalibrationName()
     uint8_t *response = new uint8_t[response_size];
     this->sendcommand(command_first, sizeof(command_first), response, response_size);
 
-    name.append((const char *)response + 1, 6);
+    name.append((const char *)response + 5, 2);
     this->sendcommand(command_second, sizeof(command_second), response, response_size);
 
     name.append((const char *)response + 1, 6);
@@ -504,5 +504,19 @@ void MSR_Reader::getMarkerSettings(bool *marker_on, bool *alarm_confirm_on)
     printf("\n");
     *marker_on = response[2];
     *alarm_confirm_on = response[3];
+    delete[] response;
+}
+void MSR_Reader::read_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
+    uint16_t *point_2_target, uint16_t *point_2_actual)
+{
+    uint8_t *response = new uint8_t[8];
+    uint8_t getpoint1[] = {0x88, 0x0C, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
+    uint8_t getpoint2[] = {0x88, 0x0D, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
+    this->sendcommand(getpoint1, sizeof(getpoint1), response, 8);
+    *point_1_target = (response[4] << 8) + response[3];
+    *point_1_actual = (response[6] << 8) + response[5];
+    this->sendcommand(getpoint2, sizeof(getpoint2), response, 8);
+    *point_2_target = (response[4] << 8) + response[3];
+    *point_2_actual = (response[6] << 8) + response[5];
     delete[] response;
 }
