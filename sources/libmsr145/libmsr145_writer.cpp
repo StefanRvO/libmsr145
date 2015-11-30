@@ -35,27 +35,34 @@ void MSR_Writer::setTime(struct tm *timeset/* need to be a mktime() formated, eg
     this->sendcommand(command, sizeof(command), nullptr, 8);
 }
 
-
-
-void MSR_Writer::setName(std::string name)
+void MSR_Writer::setNames(std::string deviceName, std::string calibrationName)
 {
     //if name is shorter than 12 characters (length of name), append spaces
     //This is also done by the proprietary driver
-    while(name.size() < 12)
-        name.push_back(' ');
+    while(deviceName.size() < 12)
+        deviceName.push_back(' ');
+    while(calibrationName.size() < 12)
+        calibrationName.push_back(' ');
 
     //this is some kind of "setup command" without it, the device won't accept the next commands
     uint8_t command_1[] = {0x85, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     //these commands sets 4 characters each
-    uint8_t command_2[] = {0x84, 0x05, 0x00, (uint8_t)name[0], (uint8_t)name[1], (uint8_t)name[2], (uint8_t)name[3]};
-    uint8_t command_3[] = {0x84, 0x05, 0x01, (uint8_t)name[4], (uint8_t)name[5], (uint8_t)name[6], (uint8_t)name[7]};
-    uint8_t command_4[] = {0x84, 0x05, 0x02, (uint8_t)name[8], (uint8_t)name[9], (uint8_t)name[10], (uint8_t)name[11]};
+    uint8_t command_2[] = {0x84, 0x05, 0x00, (uint8_t)deviceName[0], (uint8_t)deviceName[1], (uint8_t)deviceName[2], (uint8_t)deviceName[3]};
+    uint8_t command_3[] = {0x84, 0x05, 0x01, (uint8_t)deviceName[4], (uint8_t)deviceName[5], (uint8_t)deviceName[6], (uint8_t)deviceName[7]};
+    uint8_t command_4[] = {0x84, 0x05, 0x02, (uint8_t)deviceName[8], (uint8_t)deviceName[9], (uint8_t)deviceName[10], (uint8_t)deviceName[11]};
+    uint8_t command_5[] = {0x84, 0x05, 0x03, (uint8_t)calibrationName[0], (uint8_t)calibrationName[1], (uint8_t)calibrationName[2], (uint8_t)calibrationName[3]};
+    uint8_t command_6[] = {0x84, 0x05, 0x04, (uint8_t)calibrationName[4], (uint8_t)calibrationName[5], (uint8_t)calibrationName[6], (uint8_t)calibrationName[7]};
+    uint8_t command_7[] = {0x84, 0x05, 0x05, (uint8_t)calibrationName[8], (uint8_t)calibrationName[9], (uint8_t)calibrationName[10], (uint8_t)calibrationName[11]};
 
     this->sendcommand(command_1, sizeof(command_1), nullptr, 8);
     this->sendcommand(command_2, sizeof(command_2), nullptr, 8);
     this->sendcommand(command_3, sizeof(command_3), nullptr, 8);
     this->sendcommand(command_4, sizeof(command_4), nullptr, 8);
+    this->sendcommand(command_5, sizeof(command_5), nullptr, 8);
+    this->sendcommand(command_6, sizeof(command_6), nullptr, 8);
+    this->sendcommand(command_7, sizeof(command_7), nullptr, 8);
+
 }
 
 

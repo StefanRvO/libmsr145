@@ -4,10 +4,10 @@
 int main()
 {
     MSRDevice msr("/dev/ttyUSB0");
-    if(msr.isRecording()) msr.stopRecording();
+    //if(msr.isRecording()) msr.stopRecording();
     //uint8_t cmd[] = {0x8B, 0x00, 0x00, 0x04, 0x00, 0x20, 0x04};
     //std::cout << (int)msr.calcChecksum(cmd, sizeof(cmd)) << std::endl;
-    usleep(10000);
+    //usleep(10000);
     //msr.format_memory();
     /*char *time_str = new char[500];
     auto t = msr.getTime();
@@ -26,7 +26,7 @@ int main()
         std::cout << std::endl;
     //}
     std::cout << std::endl;*/
-    auto recordings = msr.getRecordinglist();
+    /*auto recordings = msr.getRecordinglist();
     char *time_str = new char[500];
     std::cout << recordings.size() << std::endl;
     int k = 0;
@@ -36,12 +36,12 @@ int main()
         printf("%d\t%04X  %s   %u\n", k++, i.address, time_str, i.length);
     }
     //msr.set_baud(230400);
-    std::cout << recordings.size() << std::endl;
-    std::vector<sample> samples;
+    std::cout << recordings.size() << std::endl;*/
+    //std::vector<sample> samples;
     //for(uint8_t i = 0; i< recordings.size(); i++)
     //{
 
-    if(recordings.size())
+    //if(recordings.size())
     {
         /*samples = msr.getSamples(recordings[0]);
         for(size_t j = 0; j < samples.size(); j++)
@@ -92,22 +92,25 @@ int main()
 
     //msr.set_baud(9600);
     //
-    usleep(5000000);
+    /*usleep(5000000);
     msr.reset_limits();
     msr.setTime();
     for(uint8_t i = 0; i < 8; i++)
         msr.set_timer_interval((timer)i, rand() % 400 + 10);
 
     for(uint8_t i = 0; i < 8; i++)
-        msr.set_timer_measurements((timer)i, active_measurement::humidity | active_measurement::pressure, 1);
+        msr.set_timer_measurements((timer)i, active_measurement::humidity | active_measurement::pressure, 1);*/
     //msr.set_timer_measurements((timer)1, active_measurement::humidity, 1);
     //msr.set_timer_measurements((timer)2, active_measurement::pressure, 1);
 
     //msr.set_limit(sampletype::T_humidity, 0, 0, limit_setting::no_limit, limit_setting::rec_start_more_limit1_stop_less_limit2);
     //msr.set_limit(sampletype::humidity, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
     //msr.set_limit(sampletype::pressure, 0, 0, limit_setting::no_limit, limit_setting::alarm_more_limit1_and_less_limit2);
-    msr.set_marker_settings(false, false);
-    msr.start_recording( startcondition::now, nullptr, nullptr, false);
+    //msr.set_marker_settings(false, false);
+    //msr.start_recording( startcondition::now, nullptr, nullptr, false);
+    msr.setNames("Bobbyb", "Gstart");
+    std::cout << msr.getCalibrationName() << std::endl;
+    std::cout << msr.getName() << std::endl;
     //usleep(10000);
     /*char *time_str2 = new char[500];
     auto t = msr.getEndTime();

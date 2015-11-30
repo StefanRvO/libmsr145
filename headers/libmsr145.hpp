@@ -47,7 +47,8 @@ class MSR_Writer : virtual public MSR_Base
 {
     public:
         MSR_Writer(std::string _portname) : MSR_Base(_portname) {};
-        virtual void setName(std::string name);
+        virtual void setNames(std::string deviceName, std::string calibrationName);
+
         virtual void setTime(struct tm *timeset = nullptr);
         virtual void start_recording(startcondition start_set,
             struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
