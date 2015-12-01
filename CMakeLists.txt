@@ -14,7 +14,8 @@ SET(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 #Wanted to add more error flags, but Image.cpp throw warnings with -pedantic and -Wunused-variable
-SET( CMAKE_CXX_FLAGS  "	-std=c++14 		\
+SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS}	\
+			-std=c++14 		\
 		 	-Wall 			\
 			-Wextra 		\
 			-Wshadow 		\
@@ -26,7 +27,6 @@ SET( CMAKE_CXX_FLAGS  "	-std=c++14 		\
 			-Wno-unused-variable 	\
 			-pedantic		\
 			-Wunused-variable	\
-			-g			\
 " )
 
 set (HEADER_DIR "${ROOT}/headers")
