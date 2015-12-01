@@ -17,7 +17,7 @@ int handle_args(int argc, char const **argv,
         std::cout << std::endl << "Command line tool for interfacing with the MSR145" << std::endl
         << desc << std::endl;
 
-        std::cout << "\n Format for time is YYYY:MM:DD:HH:MM:SS\n";
+        std::cout << "\nFormat for time is YYYY:MM:DD--HH:MM:SS\n";
         return 0;
     }
     po::notify(vm);
@@ -72,7 +72,7 @@ int main(int argc, char const **argv) {
             ("help,h", "Print help messages")
             ("stop", "Stop recording samples")
             ("start", "Start recording samples")
-            ("ringbuffer", "Should the device use a ringbuffer when running out of memeory? (--start required)")
+            ("ringbuffer", "Should the device use a ringbuffer when running out of memory? (--start required)")
             ("starttime", "Time where recording starts (--start required)")
             ("stoptime", "Time where recording stops (--start required)")
             ("startpush", "Start and stop recording on buttonpush(--start required), overwrites starttime and stoptime")

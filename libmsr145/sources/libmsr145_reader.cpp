@@ -39,8 +39,8 @@ struct tm MSR_Reader::get_time(uint8_t *command, uint8_t command_length)
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     this->send_command(command, command_length, response, response_size);
-    for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
-    printf("\n");
+    //for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
+    //printf("\n");
     struct tm time_s;
     convert_to_tm(response, &time_s);
     delete[] response;

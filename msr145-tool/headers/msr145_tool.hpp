@@ -12,4 +12,9 @@ class MSRTool : public MSRDevice
         using MSR_Writer::start_recording;
         virtual void start_recording(std::string starttime_str, std::string stoptime_str, bool ringbuff);
         virtual void start_recording(startcondition start_option, bool ringbuff); //only to use for push options
+        virtual std::string get_time_str(struct tm(MSRTool::*get_func)(void));
+        virtual std::string get_device_time_str();
+        virtual std::string get_start_time_str();
+        virtual std::string get_end_time_str();
+        virtual std::string get_interval_string();
 };
