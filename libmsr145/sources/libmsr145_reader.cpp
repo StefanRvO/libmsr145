@@ -353,17 +353,24 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
     return this_sample;
 }
 
-void MSR_Reader::get_sensor_data(int16_t *returnvalues, sampletype type1, sampletype type2, sampletype type3)
+std::vector<uint16_t> MSR_Reader::get_sensor_data(std::vector<sampletype> &types)
 {
+    std::vector<uint16_t> return_vec;
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    uint8_t fetch_data[] = {0x82, 0x02, (uint8_t)type1, (uint8_t)type2, (uint8_t)type3, 0x00, 0x00};
-    this->send_command(fetch_data, sizeof(fetch_data), response, response_size);
-    if(type1 != sampletype::none) returnvalues[0] = response[1] + (response[2] << 8);
-    if(type2 != sampletype::none) returnvalues[1] = response[3] + (response[4] << 8);
-    if(type3 != sampletype::none) returnvalues[2] = response[5] + (response[6] << 8);
-    usleep(20000); //needed to prevent staaling when doing many succesive calls
+    for(size_t i = 0; i < types.size(); i += 3)
+    {
+        uint8_t typebytes[3] = {0x00, 0x00, 0x00};
+        for(uint8_t j = 0; j < 3; j++)
+            if(i + j < types.size() ) typebytes[j] = types[i + j];
+        uint8_t fetch_data[] = {0x82, 0x02, typebytes[0], typebytes[1], typebytes[2], 0x00, 0x00};
+        this->send_command(fetch_data, sizeof(fetch_data), response, response_size);
+
+        for(uint8_t j = 0; j < 3; j++)
+            if(return_vec.size() < types.size()) return_vec.push_back(response[j * 2 + 1] + (response[j * 2 + 2] << 8));
+    }
     delete[] response;
+    return return_vec;
 }
 
 std::string MSR_Reader::get_name()

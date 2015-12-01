@@ -76,8 +76,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual struct tm get_end_time();
         virtual std::vector<rec_entry> get_rec_list(); //only work when recording is not active
         virtual std::vector<sample> get_samples(rec_entry record);
-        virtual void get_sensor_data(int16_t *returnvalues, sampletype type1 = sampletype::none,
-            sampletype type2 = sampletype::none, sampletype type3 = sampletype::none);
+        virtual std::vector<uint16_t> get_sensor_data(std::vector<sampletype> &types);
         virtual uint32_t get_timer_interval(timer t);
         virtual void get_active_measurements(timer t, uint8_t *measurements, bool *blink);
         virtual void get_start_setting(bool *bufferon, startcondition *start);

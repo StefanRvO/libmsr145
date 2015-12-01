@@ -7,12 +7,75 @@ static const char *timeformat = "%Y:%m:%d--%H:%M:%S";
 
 void MSRTool::print_status()
 {
+    update_sensors();
     std::cout << "Device Status:" << std::endl;
-    std::cout << "Serial number: " << get_serial() << std::endl;
+    std::cout << "Serial Number: " << get_serial() << std::endl;
+    std::cout << "Device Name:" << get_name() << std::endl;
     std::cout << "Device time: " << get_device_time_str() << std::endl;
     std::cout << "Device is recording: " << is_recording() << std::endl;
+    std::cout << "Sampling intervals:" << std::endl;
     std::cout << get_interval_string() << std::endl;
+    std::cout << "Current sensor measurements:" << std::endl;
+    std::vector<sampletype> sensor_to_poll;
+    sensor_to_poll.push_back(sampletype::pressure);
+    sensor_to_poll.push_back(sampletype::T_pressure);
+    sensor_to_poll.push_back(sampletype::humidity);
+    sensor_to_poll.push_back(sampletype::T_humidity);
+    sensor_to_poll.push_back(sampletype::bat);
+    auto sensor_readings = get_sensor_data(sensor_to_poll);
+    for(uint8_t i = 0; i < sensor_readings.size(); i++)
+        std::cout << get_sensor_string(sensor_to_poll[i], sensor_readings[i]);
 
+}
+
+std::string MSRTool::get_sensor_string(sampletype type, uint16_t value)
+{
+    std::stringstream ret_str;
+    switch(type)
+    {
+        case pressure:
+            ret_str << "\tPressure (mbar):\t" << convert_to_unit(type, value) << std::endl;
+            break;
+        case T_pressure:
+            ret_str << "\tTemperature(p) (C):\t" << convert_to_unit(type, value) << std::endl;
+            break;
+        case humidity:
+            ret_str << "\tHumidity(%%):\t\t" << convert_to_unit(type, value) << std::endl;
+            break;
+        case T_humidity:
+            ret_str << "\tTemperature(RH) (C):\t" << convert_to_unit(type, value) << std::endl;
+            break;
+        case bat:
+            ret_str << "\tBattery (V):\t\t" << convert_to_unit(type, value) << std::endl;
+            break;
+        default:
+            assert(false); //this should not happen
+    }
+    return ret_str.str();
+}
+
+float MSRTool::convert_to_unit(sampletype type, uint16_t value)
+{
+    switch(type)
+    {
+        case pressure:
+            //returns in unit of mbar
+            return value/10.;
+        case T_pressure:
+            //return in ⁰C
+            return value/10.;
+        case humidity:
+            //return in %
+            return value/100.;
+        case T_humidity:
+            //return in ⁰C
+            return value/100.;
+        case bat:
+            //return in unit of volts
+            return value; //not figured out yet
+        default:
+            assert(false); //this should not happen
+    }
 }
 
 std::string MSRTool::get_interval_string()
@@ -44,34 +107,35 @@ std::string MSRTool::get_interval_string()
     }
     if(blink_intervals.size())
     {
-        return_str << "Blink intervals (seconds):\t";
+        return_str << "\tBlink intervals (seconds):\t";
         for(auto &i : blink_intervals) return_str << i << "\t";
         return_str << std::endl;
     }
     if(pressure_intervals.size())
     {
-        return_str << "Pressure intervals (seconds):\t";
+        return_str << "\tPressure intervals (seconds):\t";
         for(auto &i : pressure_intervals) return_str << i << "\t";
         return_str << std::endl;
     }
     if(humidity_intervals.size())
     {
-        return_str << "Humidity intervals (seconds):\t";
+        return_str << "\tHumidity intervals (seconds):\t";
         for(auto &i : humidity_intervals) return_str << i << "\t";
         return_str << std::endl;
     }
     if(T1_intervals.size())
     {
-        return_str << "T1 intervals (seconds):\t";
+        return_str << "\tT1 intervals (seconds):\t";
         for(auto &i : T1_intervals) return_str << i << "\t";
         return_str << std::endl;
     }
     if(battery_intervals.size())
     {
-        return_str << "Battery intervals (seconds):\t";
+        return_str << "\tBattery intervals (seconds):\t";
         for(auto &i : battery_intervals) return_str << i << "\t";
         return_str << std::endl;
     }
+    if(return_str.str().size() == 0) return_str << "\tNone\n";
     return return_str.str();
 }
 
