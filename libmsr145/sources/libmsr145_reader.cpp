@@ -10,12 +10,12 @@
 #include "libmsr145.hpp"
 #include <string>
 
-std::string MSR_Reader::getSerialNumber()
+std::string MSR_Reader::get_serial()
 {
     size_t response_size = 8;
     uint8_t command[] = {0x81, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(command, sizeof(command), response, response_size);
+    this->send_command(command, sizeof(command), response, response_size);
 
     uint64_t serial = (response[3] << 16) + (response[2] << 8) + response[1];
     delete[] response;
@@ -34,11 +34,11 @@ void MSR_Reader::convert_to_tm(uint8_t *response_ptr, struct tm *time_s)
     mktime(time_s);
 }
 
-struct tm MSR_Reader::getTime(uint8_t *command, uint8_t command_length)
+struct tm MSR_Reader::get_time(uint8_t *command, uint8_t command_length)
 {   //Returns the time returned by the command in "command"
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(command, command_length, response, response_size);
+    this->send_command(command, command_length, response, response_size);
     for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
     printf("\n");
     struct tm time_s;
@@ -47,10 +47,10 @@ struct tm MSR_Reader::getTime(uint8_t *command, uint8_t command_length)
     return time_s;
 }
 
-struct tm MSR_Reader::getDeviceTime()
+struct tm MSR_Reader::get_device_time()
 {
     uint8_t command[] = {0x8C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    return getTime(command, sizeof(command));
+    return get_time(command, sizeof(command));
 }
 
 rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active)
@@ -77,13 +77,13 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     entry.isRecording = active;
     return entry;
 }
-std::vector<rec_entry> MSR_Reader::getRecordinglist()
+std::vector<rec_entry> MSR_Reader::get_rec_list()
 {
     std::vector<rec_entry> rec_addresses;
     uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(first_placement_get, sizeof(first_placement_get), response, response_size);
+    this->send_command(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
     uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
@@ -98,7 +98,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
     if(recording_active)
     {
         uint8_t active_recording_get[] = {0x8B, 0x00, 0x01, 0x00, 0x00, 0x08, 0x00};
-        this->sendcommand(active_recording_get, sizeof(active_recording_get), response, response_size);
+        this->send_command(active_recording_get, sizeof(active_recording_get), response, response_size);
         //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
         //printf("\n");
         cur_address = (response[8] <<  8) + response[7];
@@ -106,7 +106,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
         next_placement_get[4] = cur_address >> 8;
         if(response[1] == 0x01)
         {
-            this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
+            this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
             //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
             //printf("\n");
         }
@@ -130,7 +130,7 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
     next_placement_get[4] = cur_address >> 8;
     while(cur_address != 0x1FFF)
     {
-        this->sendcommand(next_placement_get, sizeof(next_placement_get), response, response_size);
+        this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
         //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
         //printf("\n");
         //adress to next entry is placed in byte 8 and 9
@@ -167,9 +167,9 @@ std::vector<rec_entry> MSR_Reader::getRecordinglist()
     return rec_addresses;
 }
 
-std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
+std::vector<uint8_t> MSR_Reader::get_raw_recording(rec_entry record)
 { //recordings are read from the smallest memory location to the largest
-    if(!isRecording()) record.isRecording = false; //if we are not recording, this field is forced to be false.
+    if(!is_recording()) record.isRecording = false; //if we are not recording, this field is forced to be false.
     std::vector<uint8_t> recordData;
     size_t response_size = 0x0422;
     uint8_t *response = new uint8_t[response_size];
@@ -186,7 +186,7 @@ std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
         uint16_t cur_addr = record.address + i;
         fetch_command[3] = cur_addr & 0xFF;
         fetch_command[4] = cur_addr >> 8;
-        this->sendcommand(fetch_command, sizeof(fetch_command), response, response_size);
+        this->send_command(fetch_command, sizeof(fetch_command), response, response_size);
 
         //load the data into the vector. ignore first 9 bytes(for now), they are timestamp, etc
         uint16_t start_pos;
@@ -206,7 +206,7 @@ std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
                 end = true;
                 if(record.isRecording && j == start_pos)  //this means that we are trying to access the current page.
                 {
-                    GetLiveData(cur_addr, &recordData, i == 0);  //Fetch the data by other means.
+                    get_live_data(cur_addr, &recordData, i == 0);  //Fetch the data by other means.
                     //printf("%d\n\n\n", j);
                 }
                 break;
@@ -220,7 +220,7 @@ std::vector<uint8_t> MSR_Reader::getRawRecording(rec_entry record)
     return recordData;
 }
 
-void MSR_Reader::GetLiveData(uint16_t cur_addr,std::vector<uint8_t> *recording_data, bool isFirstPage)
+void MSR_Reader::get_live_data(uint16_t cur_addr,std::vector<uint8_t> *recording_data, bool isFirstPage)
 {   //Beware, this may contain bugs! Hard to debug, as the timing may be different each time.
 
     //first, fetch the data from the "live" page, using the special command.
@@ -231,22 +231,22 @@ void MSR_Reader::GetLiveData(uint16_t cur_addr,std::vector<uint8_t> *recording_d
     uint8_t *page_data = new uint8_t[response_size];
     //std::vector<uint8_t> data;
     uint8_t get_live_length[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(get_live_length, sizeof(get_live_length), live_data, 8);
+    this->send_command(get_live_length, sizeof(get_live_length), live_data, 8);
     uint16_t length = ((live_data[6] << 8) + live_data[5]) * 2;
 
     uint8_t get_live_page[] =   {0x8B, 0x00, 0x01, 0x00, 0x00, ((uint8_t)(length & 0xFF)), ((uint8_t)(length >> 8))};
-    this->sendcommand(get_live_page, sizeof(get_live_page), live_data, length + 2);
+    this->send_command(get_live_page, sizeof(get_live_page), live_data, length + 2);
     //check if the current address page is still unaccessable
     uint8_t fetch_command[] = {0x8B, 0x00, 0x00, ((uint8_t)(cur_addr & 0xFF)), ((uint8_t)(cur_addr >> 8)), 0x20, 0x04};
-    this->sendcommand(fetch_command, sizeof(fetch_command), page_data, response_size);
+    this->send_command(fetch_command, sizeof(fetch_command), page_data, response_size);
     if(!(page_data[start_pos + 0] == 0xFF && page_data[start_pos + 1] == 0xFF && page_data[start_pos + 2] == 0xFF && page_data[start_pos + 3] == 0xFF))
     {
         //the page have changed. first, fetch new live page
-        this->sendcommand(get_live_length, sizeof(get_live_length), live_data, 8);
+        this->send_command(get_live_length, sizeof(get_live_length), live_data, 8);
         length = ((live_data[6] << 8) + live_data[5]) * 2;
         get_live_page[5] = length & 0xFF;
         get_live_page[6] = length >> 8;
-        this->sendcommand(get_live_page, sizeof(get_live_page), live_data, length + 2);
+        this->send_command(get_live_page, sizeof(get_live_page), live_data, length + 2);
         //read page into vector
         for(uint16_t i = start_pos; i < response_size - 1; i += 4)
         {
@@ -278,21 +278,21 @@ void MSR_Reader::GetLiveData(uint16_t cur_addr,std::vector<uint8_t> *recording_d
     delete[] page_data;
 }
 
-std::vector<sample> MSR_Reader::getSamples(rec_entry record)
+std::vector<sample> MSR_Reader::get_samples(rec_entry record)
 {
     std::vector<sample> samples;
-    auto rawdata = this->getRawRecording(record);
+    auto rawdata = this->get_raw_recording(record);
     uint64_t timestamp = 0; //time since start of record in 1/512 seconds
     //run through the raw data and convert it to samples
     for(size_t i = 0; i < rawdata.size(); i += 4)
     {
-        auto cur_sample = convertToSample(rawdata.data() + i, &timestamp);
+        auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
         if(cur_sample.type == sampletype::end) break;
         samples.push_back(cur_sample);
     }
     return samples;
 }
-sample MSR_Reader::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
+sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
 {   //convert the 4 bytes pointed to by sample_ptr into the sample struct
     //the last 3 bytes are the sample data. however, not all types use all the bytes
     //some part of it is used for something else.
@@ -353,12 +353,12 @@ sample MSR_Reader::convertToSample(uint8_t *sample_ptr, uint64_t *total_time)
     return this_sample;
 }
 
-void MSR_Reader::getSensorData(int16_t *returnvalues, sampletype type1, sampletype type2, sampletype type3)
+void MSR_Reader::get_sensor_data(int16_t *returnvalues, sampletype type1, sampletype type2, sampletype type3)
 {
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     uint8_t fetch_data[] = {0x82, 0x02, (uint8_t)type1, (uint8_t)type2, (uint8_t)type3, 0x00, 0x00};
-    this->sendcommand(fetch_data, sizeof(fetch_data), response, response_size);
+    this->send_command(fetch_data, sizeof(fetch_data), response, response_size);
     if(type1 != sampletype::none) returnvalues[0] = response[1] + (response[2] << 8);
     if(type2 != sampletype::none) returnvalues[1] = response[3] + (response[4] << 8);
     if(type3 != sampletype::none) returnvalues[2] = response[5] + (response[6] << 8);
@@ -366,7 +366,7 @@ void MSR_Reader::getSensorData(int16_t *returnvalues, sampletype type1, samplety
     delete[] response;
 }
 
-std::string MSR_Reader::getName()
+std::string MSR_Reader::get_name()
 {
     //first, collect the first 6 chars of the namespace
     std::string name;
@@ -375,17 +375,17 @@ std::string MSR_Reader::getName()
     uint8_t command_second[] = {0x83, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00};
 
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(command_first, sizeof(command_first), response, response_size);
+    this->send_command(command_first, sizeof(command_first), response, response_size);
 
     name.append((const char *)response + 1, 6);
-    this->sendcommand(command_second, sizeof(command_second), response, response_size);
+    this->send_command(command_second, sizeof(command_second), response, response_size);
 
     name.append((const char *)response + 1, 6);
     delete[] response;
     return name;
 }
 
-std::string MSR_Reader::getCalibrationName()
+std::string MSR_Reader::get_calibration_name()
 {
     //first, collect the first 6 chars of the namespace
     std::string name;
@@ -394,10 +394,10 @@ std::string MSR_Reader::getCalibrationName()
     uint8_t command_second[] = {0x83, 0x05, 0x03, 0x00, 0x00, 0x00, 0x00};
 
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(command_first, sizeof(command_first), response, response_size);
+    this->send_command(command_first, sizeof(command_first), response, response_size);
 
     name.append((const char *)response + 5, 2);
-    this->sendcommand(command_second, sizeof(command_second), response, response_size);
+    this->send_command(command_second, sizeof(command_second), response, response_size);
 
     name.append((const char *)response + 1, 6);
     delete[] response;
@@ -405,36 +405,36 @@ std::string MSR_Reader::getCalibrationName()
 }
 
 
-uint32_t MSR_Reader::getTimerInterval(timer t)
+uint32_t MSR_Reader::get_timer_interval(timer t)
 {
     uint8_t *response = new uint8_t[8];
     uint8_t get_cmd[] = {0x83, 0x01, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(get_cmd, sizeof(get_cmd), response, 8);
+    this->send_command(get_cmd, sizeof(get_cmd), response, 8);
     uint32_t interval = (response[6] << 24) + (response[5] << 16) +
         (response[4] << 8) + response[3];
     delete[] response;
     return interval;
 }
 
-void MSR_Reader::getActivatedMeasurements(timer t, uint8_t *measurements, bool *blink)
+void MSR_Reader::get_active_measurements(timer t, uint8_t *measurements, bool *blink)
 {   //Reads which measurements are active for this timer.
     //Saves the result in the given measurement and blink pointers.
     //It is done this way as we both need to determine if blink is active,
     //and the rest of the measurements
     uint8_t *response = new uint8_t[8];
     uint8_t get_cmd[] = {0x83, 0x00, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(get_cmd, sizeof(get_cmd), response, 8);
+    this->send_command(get_cmd, sizeof(get_cmd), response, 8);
     *measurements = response[3];
     *blink = response[6];
     delete[] response;
 }
 
-void MSR_Reader::readStartSetting(bool *bufferon, startcondition *start)
+void MSR_Reader::get_start_setting(bool *bufferon, startcondition *start)
 {
-    uint8_t read_cmd[] = {0x83, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t get_cmd[] = {0x83, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
+    this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
     for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
     printf("\n");
     *bufferon = !(response[4] & 0x01);
@@ -455,67 +455,67 @@ void MSR_Reader::readStartSetting(bool *bufferon, startcondition *start)
     }
     delete[] response;
 }
-uint16_t MSR_Reader::readGeneralLimitSettings()
+uint16_t MSR_Reader::get_general_lim_settings()
 {   //the sampletimes where limits is active can be recieved by doing (returnval & (1 << sampletype))
-    uint8_t read_cmd[] ={0x88, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t get_cmd[] ={0x88, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
+    this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
     uint16_t rec_limits = (response[4] << 8) + response[3];
     uint16_t alarm_limits = (response[6] << 8) + response[5];
     //for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
     //printf("\n");
-    delete response;
+    delete[] response;
     //return the limits OR'd together. We don't care if it's an alarm-limit or rec.
     //this can be checked by a later command, which also give the actual limits.
     return rec_limits | alarm_limits;
 }
 
-void MSR_Reader::readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2)
+void MSR_Reader::get_sample_lim_setting(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2)
 {
-    uint8_t read_cmd[] = {0x88, 0x0A, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
+    uint8_t get_cmd[] = {0x88, 0x0A, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
-    this->sendcommand(read_cmd, sizeof(read_cmd), response, response_size);
+    this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
     *limit_setting = response[1];
     *limit1 = (response[4] << 8) + response[3];
     *limit2 = (response[6] << 8) + response[5];
 }
 
-struct tm MSR_Reader::getStartTime()
+struct tm MSR_Reader::get_start_time()
 {   //Get the time where sampling starts
     uint8_t command[] = {0x8C, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
-    return getTime(command, sizeof(command));
+    return get_time(command, sizeof(command));
 }
 
-struct tm MSR_Reader::getEndTime()
+struct tm MSR_Reader::get_end_time()
 {   //Get the time where sampling stops
     uint8_t command[] = {0x8C, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
-    return getTime(command, sizeof(command));
+    return get_time(command, sizeof(command));
 }
 
-void MSR_Reader::getMarkerSettings(bool *marker_on, bool *alarm_confirm_on)
+void MSR_Reader::get_marker_setting(bool *marker_on, bool *alarm_confirm_on)
 {
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     uint8_t get_cmd[] =  {0x88, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(get_cmd, sizeof(get_cmd), response, response_size);
+    this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
     for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
     printf("\n");
     *marker_on = response[2];
     *alarm_confirm_on = response[3];
     delete[] response;
 }
-void MSR_Reader::read_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
+void MSR_Reader::get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
     uint16_t *point_2_target, uint16_t *point_2_actual)
 {
     uint8_t *response = new uint8_t[8];
     uint8_t getpoint1[] = {0x88, 0x0C, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
     uint8_t getpoint2[] = {0x88, 0x0D, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
-    this->sendcommand(getpoint1, sizeof(getpoint1), response, 8);
+    this->send_command(getpoint1, sizeof(getpoint1), response, 8);
     *point_1_target = (response[4] << 8) + response[3];
     *point_1_actual = (response[6] << 8) + response[5];
-    this->sendcommand(getpoint2, sizeof(getpoint2), response, 8);
+    this->send_command(getpoint2, sizeof(getpoint2), response, 8);
     *point_2_target = (response[4] << 8) + response[3];
     *point_2_actual = (response[6] << 8) + response[5];
     delete[] response;

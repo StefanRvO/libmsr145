@@ -26,19 +26,18 @@ class MSR_Base
         boost::asio::serial_port *port;
         boost::asio::io_service ioservice;
         std::string portname;
-        boost::asio::deadline_timer *read_timer;
     public:
         MSR_Base(std::string _portname);
         virtual ~MSR_Base();
         virtual void set_baud(uint32_t baudrate);
-        virtual void updateSensors(); //not really sure which class to put this in.
+        virtual void update_sensors(); //not really sure which class to put this in.
         virtual void format_memory();
-        virtual void stopRecording();
-        virtual bool isRecording();
+        virtual void stop_recording();
+        virtual bool is_recording();
     public: //protected:
-        virtual int sendcommand(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
-        virtual void sendraw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
-        virtual uint8_t calcChecksum(uint8_t *data, size_t length);
+        virtual int send_command(uint8_t *command, size_t command_length, uint8_t *out, size_t out_length);
+        virtual void send_raw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
+        virtual uint8_t calc_chksum(uint8_t *data, size_t length);
 
 
 };
@@ -47,10 +46,10 @@ class MSR_Writer : virtual public MSR_Base
 {
     public:
         MSR_Writer(std::string _portname) : MSR_Base(_portname) {};
-        virtual void setNamesAndCalibrationDate(std::string deviceName, std::string calibrationName,
+        virtual void set_names_and_calibration_date(std::string deviceName, std::string calibrationName,
             uint8_t year, uint8_t month, uint8_t day);
 
-        virtual void setTime(struct tm *timeset = nullptr);
+        virtual void set_time(struct tm *timeset = nullptr);
         virtual void start_recording(startcondition start_set,
             struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
         virtual void set_timer_interval(timer t, uint64_t interval);
@@ -68,31 +67,31 @@ class MSR_Reader : virtual public MSR_Base
 {
     public:
         MSR_Reader(std::string _portname) : MSR_Base(_portname) {};
-        virtual std::string getSerialNumber();
-        virtual std::string getName();
-        virtual std::string getCalibrationName();
-        virtual struct tm getTime(uint8_t *command, uint8_t command_length);
-        virtual struct tm getDeviceTime();
-        virtual struct tm getStartTime();
-        virtual struct tm getEndTime();
-        virtual std::vector<rec_entry> getRecordinglist(); //only work when recording is not active
-        virtual std::vector<sample> getSamples(rec_entry record);
-        virtual void getSensorData(int16_t *returnvalues, sampletype type1 = sampletype::none,
+        virtual std::string get_serial();
+        virtual std::string get_name();
+        virtual std::string get_calibration_name();
+        virtual struct tm get_time(uint8_t *command, uint8_t command_length);
+        virtual struct tm get_device_time();
+        virtual struct tm get_start_time();
+        virtual struct tm get_end_time();
+        virtual std::vector<rec_entry> get_rec_list(); //only work when recording is not active
+        virtual std::vector<sample> get_samples(rec_entry record);
+        virtual void get_sensor_data(int16_t *returnvalues, sampletype type1 = sampletype::none,
             sampletype type2 = sampletype::none, sampletype type3 = sampletype::none);
-        virtual uint32_t getTimerInterval(timer t);
-        virtual void getActivatedMeasurements(timer t, uint8_t *measurements, bool *blink);
-        virtual void readStartSetting(bool *bufferon, startcondition *start);
-        virtual uint16_t readGeneralLimitSettings();
-        virtual void readSampleLimitSettings(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
+        virtual uint32_t get_timer_interval(timer t);
+        virtual void get_active_measurements(timer t, uint8_t *measurements, bool *blink);
+        virtual void get_start_setting(bool *bufferon, startcondition *start);
+        virtual uint16_t get_general_lim_settings();
+        virtual void get_sample_lim_setting(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
-        virtual void getMarkerSettings(bool *marker_on, bool *alarm_confirm_on);
-        virtual void GetLiveData(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);
-        virtual void read_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
+        virtual void get_marker_setting(bool *marker_on, bool *alarm_confirm_on);
+        virtual void get_live_data(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);
+        virtual void get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
             uint16_t *point_2_target, uint16_t *point_2_actual);
 
     protected:
-        virtual std::vector<uint8_t> getRawRecording(rec_entry record);
-        virtual sample convertToSample(uint8_t *sample_ptr, uint64_t *total_time);
+        virtual std::vector<uint8_t> get_raw_recording(rec_entry record);
+        virtual sample convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time);
         virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active);
 };
 
