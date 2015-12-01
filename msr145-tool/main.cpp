@@ -12,7 +12,7 @@ int handle_args(int argc, char const **argv,
     po::store(po::parse_command_line(argc, argv, desc), vm);
     if(vm.count("help") || argc == 1)
     {
-        std::cout << "Command line tool for interfacing with the MSR145" << std::endl
+        std::cout << std::endl << "Command line tool for interfacing with the MSR145" << std::endl
         << desc << std::endl;
     }
     po::notify(vm);
@@ -26,7 +26,11 @@ int main(int argc, char const **argv) {
     {
         po::options_description desc("Options");
         desc.add_options()
-            ("help,h", "print help messages");
+            ("help,h", "Print help messages")
+            ("status,s", "Print current settings of the MSR145")
+            ("stop", "Stop recording samples")
+            ("start", "Start recording samples")
+            ;
         po::variables_map vm;
         try
         {

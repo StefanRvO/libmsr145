@@ -29,13 +29,8 @@ SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS}	\
 			-Wunused-variable	\
 " )
 
-set (HEADER_DIR "${ROOT}/headers")
-set (HEADER_FILES ${HEADER_DIR}/libmsr145.hpp)
-set (HEADER_FILES ${HEADER_FILES} ${HEADER_DIR}/libmsr145_structs.hpp)
-set (HEADER_FILES ${HEADER_FILES} ${HEADER_DIR}/libmsr145_enums.hpp)
-
-include_directories(${HEADER_DIR})
-
-add_subdirectory("sources")
+add_subdirectory("libmsr145")
+add_subdirectory("msr145-test")
+add_subdirectory("msr145-tool")
 
 
