@@ -30,7 +30,22 @@ int handle_args(int argc, char const **argv,
     {
         msr.stop_recording();
     }
-
+    if(vm.count("rawcmd"))
+    {
+        std::vector<uint8_t> cmd_vec;
+        auto vec = vm["rawcmd"].as<std::vector<std::string> >();
+        for(size_t i = 0; i < vec.size(); i++)
+            cmd_vec.push_back(std::stoul(vec[i], nullptr, 16));
+        if(cmd_vec.size())
+        {
+            uint8_t *response = new uint8_t[cmd_vec.back()];
+            msr.send_command(cmd_vec.data(), cmd_vec.size() - 1, response, cmd_vec.back());
+            for(size_t i = 0; i < cmd_vec.back(); i++)
+                printf("%02X ", response[i]);
+            printf("\n");
+            delete[] response;
+        }
+    }
 
     if(vm.count("start"))
     {   //should be last arg to check
@@ -54,7 +69,7 @@ int handle_args(int argc, char const **argv,
         }
         if(vm.count("stoptime"))
         {
-            starttime_str = vm["stoptime"].as<std::string>();
+            stoptime_str = vm["stoptime"].as<std::string>();
         }
         msr.start_recording(starttime_str, stoptime_str, ringbuff);
         return 0;
@@ -73,11 +88,12 @@ int main(int argc, char const **argv) {
             ("stop", "Stop recording samples")
             ("start", "Start recording samples")
             ("ringbuffer", "Should the device use a ringbuffer when running out of memory? (--start required)")
-            ("starttime", "Time where recording starts (--start required)")
-            ("stoptime", "Time where recording stops (--start required)")
+            ("starttime",po::value<std::string>(), "Time where recording starts (--start required)")
+            ("stoptime",po::value<std::string>(), "Time where recording stops (--start required)")
             ("startpush", "Start and stop recording on buttonpush(--start required), overwrites starttime and stoptime")
             ("startstoppush", "Start and stop recording on buttonpush(--start required), overwrites starttime and stoptime")
             ("status,s", "Print current settings of the MSR145")
+            ("rawcmd", po::value<std::vector<std::string> >()->multitoken(), "Send a raw command to the device and read the answer. last argument in list is lenght of answer")
             ;
         po::variables_map vm;
         try

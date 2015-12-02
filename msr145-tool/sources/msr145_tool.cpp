@@ -13,6 +13,10 @@ void MSRTool::print_status()
     std::cout << "Device Name:" << get_name() << std::endl;
     std::cout << "Device time: " << get_device_time_str() << std::endl;
     std::cout << "Device is recording: " << is_recording() << std::endl;
+    bool marker_on, alarm_confirm_on;
+    get_marker_setting(&marker_on, &alarm_confirm_on);
+    std::cout << "Marker: " << marker_on << std::endl;
+    std::cout << "Alarm confirm: " <<  alarm_confirm_on << std::endl;
     std::cout << "Sampling intervals:" << std::endl;
     std::cout << get_interval_string() << std::endl;
     std::cout << "Current sensor measurements:" << std::endl;
@@ -25,7 +29,136 @@ void MSRTool::print_status()
     auto sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
         std::cout << get_sensor_string(sensor_to_poll[i], sensor_readings[i]);
+    std::cout << get_start_settings_str() << std::endl;
+    std::cout << "Limit settings:" << std::endl;
+    std::cout << get_limits_str() << std::endl;
+}
 
+std::string MSRTool::get_limits_str()
+{
+    std::stringstream ret_str;
+    uint16_t activated_limits = get_general_lim_settings();
+    for(uint8_t i = 0; i < 0xF; i++) //run through all the types
+    {
+        if(!(activated_limits & 1 << i)) continue;
+        switch(i)
+        {
+            case sampletype::pressure: case sampletype::T_pressure:
+            case sampletype::humidity: case sampletype::T_humidity:
+            case sampletype::bat:
+            ret_str << get_sample_limit_str((sampletype)i);
+                break;
+            default:
+                std::cout << "unknown limit type: " << (int)i << std::endl;
+        }
+    }
+    if(ret_str.str().size())
+        return ret_str.str();
+    else
+        return std::string("\tNone");
+}
+
+std::string MSRTool::get_sample_limit_str(sampletype type)
+{
+    std::stringstream ret_str;
+    ret_str << "\tLimits for ";
+    switch(type)
+    {
+        case pressure:
+            ret_str << "Pressure (mbar): ";
+            break;
+        case T_pressure:
+            ret_str << "Temperature(p) (C): ";
+            break;
+        case humidity:
+            ret_str << "Humidity (%): ";
+            break;
+        case T_humidity:
+            ret_str << "Temperature(RH) (C): ";
+            break;
+        case bat:
+            ret_str << "Battery (V): ";
+            break;
+        default:
+            assert(false); //this should not happen
+    }
+    uint8_t rec_settings, alarm_settings;
+    uint16_t limit1, limit2;
+    get_sample_lim_setting(type, &rec_settings, &alarm_settings, &limit1, &limit2);
+    ret_str << "L1=" << convert_to_unit(type, limit1) << ", L2="
+        << convert_to_unit(type, limit2) << std::endl;
+    switch(rec_settings)
+    {
+        case rec_less_limit2:
+            ret_str << "\t\tRecord Limit: S<L2" << std::endl;
+            break;
+        case rec_more_limit2:
+            ret_str << "\t\tRecord Limit: S>L2" << std::endl;
+            break;
+        case rec_more_limit1_and_less_limit2:
+            ret_str << "\t\tRecord Limit: L1<S<L2" << std::endl;
+            break;
+        case rec_less_limit1_or_more_limit2:
+            ret_str << "\t\tRecord Limit: S<L1 or S>L2" << std::endl;
+            break;
+        case rec_start_more_limit1_stop_less_limit2:
+            ret_str << "\t\tRecord Limit: Start: S>L1, Stop: S<L2" << std::endl;
+            break;
+        case rec_start_less_limit1_stop_more_limit2:
+            ret_str << "\t\tRecord Limit: Start: S<L1, Stop: S>L2" << std::endl;
+            break;
+    }
+    switch(alarm_settings)
+    {
+        case alarm_less_limit1:
+            ret_str << "\t\tAlarm Limit: S<L1" << std::endl;
+            break;
+        case alarm_more_limit1:
+            ret_str << "\t\tAlarm Limit: S>L1" << std::endl;
+            break;
+        case alarm_more_limit1_and_less_limit2:
+            ret_str << "\t\tAlarm Limit: L1<S<L2" << std::endl;
+            break;
+        case alarm_less_limit1_or_more_limit2:
+            ret_str << "\t\tAlarm Limit: S<L1 or S>L2" << std::endl;
+            break;
+    }
+    return ret_str.str();
+}
+
+std::string MSRTool::get_start_settings_str()
+{
+    std::stringstream ret_str;
+    bool bufferon;
+    startcondition startcon;
+    get_start_setting(&bufferon, &startcon);
+    ret_str << "Settings for start:\n";
+    ret_str << "\tRingbuffer on: " << bufferon << std::endl;
+    ret_str << "\tStartsetting:\t";
+    switch(startcon)
+    {
+        case startcondition::now:
+            ret_str << "Start imidediately" << std::endl;
+            break;
+        case startcondition::push_start:
+            ret_str << "Start on button push" << std::endl;
+            break;
+        case startcondition::push_start_stop:
+            ret_str << "Start and stop on button push" << std::endl;
+            break;
+        case startcondition::time_start:
+            ret_str << "Start on\t" << get_start_time_str() << std::endl;
+            break;
+        case startcondition::time_stop:
+            ret_str << "Start imidediately" << std::endl;
+            ret_str << "\t\t\tStop on\t\t" << get_end_time_str() << std::endl;
+            break;
+        case startcondition::time_start_stop:
+            ret_str << "Start on\t" << get_start_time_str() << std::endl;
+            ret_str << "\t\t\tStop on\t\t" << get_end_time_str() << std::endl;
+            break;
+    }
+    return ret_str.str();
 }
 
 std::string MSRTool::get_sensor_string(sampletype type, uint16_t value)
@@ -40,7 +173,7 @@ std::string MSRTool::get_sensor_string(sampletype type, uint16_t value)
             ret_str << "\tTemperature(p) (C):\t" << convert_to_unit(type, value) << std::endl;
             break;
         case humidity:
-            ret_str << "\tHumidity(%%):\t\t" << convert_to_unit(type, value) << std::endl;
+            ret_str << "\tHumidity (%):\t\t" << convert_to_unit(type, value) << std::endl;
             break;
         case T_humidity:
             ret_str << "\tTemperature(RH) (C):\t" << convert_to_unit(type, value) << std::endl;
@@ -94,6 +227,7 @@ std::string MSRTool::get_interval_string()
         uint8_t active_samples = 0;
         bool blink = false;
         get_active_measurements((timer)i, &active_samples, &blink);
+        //std::cout << (int)active_samples << "\t" << interval << std::endl;
         if(blink)
             blink_intervals.push_back(interval);
         if(active_samples & active_measurement::pressure)
@@ -193,10 +327,10 @@ void MSRTool::start_recording(std::string starttime_str, std::string stoptime_st
         if(start_tm_ptr)
             start_recording(startcondition::time_start_stop, start_tm_ptr, stop_tm_ptr, ringbuff);
         else
-            start_recording(startcondition::time_stop, start_tm_ptr, stop_tm_ptr, ringbuff);
+            start_recording(startcondition::time_stop, nullptr, stop_tm_ptr, ringbuff);
     }
     else if(start_tm_ptr)
-        start_recording(startcondition::time_start, start_tm_ptr, stop_tm_ptr, ringbuff);
+        start_recording(startcondition::time_start, start_tm_ptr, nullptr, ringbuff);
 
     else start_recording(startcondition::now, nullptr, nullptr, ringbuff);
 }

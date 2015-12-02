@@ -44,7 +44,7 @@ enum limit_setting
     alarm_less_limit1 = 0x01 << 3,
     alarm_more_limit1 = 0x02 << 3,
     alarm_more_limit1_and_less_limit2 = 0x03 << 3,
-    alarm_ess_limit1_or_more_limit2 = 0x04 << 3,
+    alarm_less_limit1_or_more_limit2 = 0x04 << 3,
 
 };
 

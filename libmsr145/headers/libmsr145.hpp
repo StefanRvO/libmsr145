@@ -81,7 +81,8 @@ class MSR_Reader : virtual public MSR_Base
         virtual void get_active_measurements(timer t, uint8_t *measurements, bool *blink);
         virtual void get_start_setting(bool *bufferon, startcondition *start);
         virtual uint16_t get_general_lim_settings();
-        virtual void get_sample_lim_setting(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2);
+        virtual void get_sample_lim_setting(sampletype type, uint8_t *rec_settings,
+            uint8_t *alarm_settings, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
         virtual void get_marker_setting(bool *marker_on, bool *alarm_confirm_on);
         virtual void get_live_data(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);

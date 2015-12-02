@@ -110,6 +110,7 @@ void MSR_Writer::start_recording(startcondition start_set,
         case startcondition::time_stop:
             recording_setup[2] = 0x01;
             recording_setup[3] = 0x02;
+        break;
 
     }
     this->send_command(recording_setup, sizeof(recording_setup), nullptr, 8);

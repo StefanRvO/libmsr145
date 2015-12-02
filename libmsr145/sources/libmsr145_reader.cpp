@@ -90,7 +90,7 @@ std::vector<rec_entry> MSR_Reader::get_rec_list()
     uint16_t start_address = end_address;
     uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00};
 
-    bool recording_active = (response[1] == 0x83); //this byte defines if the device is currently recording
+    bool recording_active = (response[1] & 0x03); //this byte defines if the device is currently recording
     response_size = 10;
     delete[] response;
     response = new uint8_t[10];
@@ -431,7 +431,9 @@ void MSR_Reader::get_active_measurements(timer t, uint8_t *measurements, bool *b
     uint8_t *response = new uint8_t[8];
     uint8_t get_cmd[] = {0x83, 0x00, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
     this->send_command(get_cmd, sizeof(get_cmd), response, 8);
-    *measurements = response[3];
+    //for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
+    //it seems that some measurement types is also defined in byte 4, but i don't fully understand yet.
+    *measurements =  response[5];
     *blink = response[6];
     delete[] response;
 }
@@ -447,6 +449,9 @@ void MSR_Reader::get_start_setting(bool *bufferon, startcondition *start)
     *bufferon = !(response[4] & 0x01);
     switch(response[2])
     {
+        case 0x00: //This sometimes happens
+            *start = startcondition::now;
+            break;
         case 0x01:
             if(response[3] == 0x02) *start = startcondition::time_stop;
             else                    *start = startcondition::now;
@@ -463,7 +468,7 @@ void MSR_Reader::get_start_setting(bool *bufferon, startcondition *start)
     delete[] response;
 }
 uint16_t MSR_Reader::get_general_lim_settings()
-{   //the sampletimes where limits is active can be recieved by doing (returnval & (1 << sampletype))
+{   //the sampletypes where limits is active can be recieved by doing (returnval & (1 << sampletype))
     uint8_t get_cmd[] ={0x88, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
@@ -478,13 +483,14 @@ uint16_t MSR_Reader::get_general_lim_settings()
     return rec_limits | alarm_limits;
 }
 
-void MSR_Reader::get_sample_lim_setting(sampletype type, uint8_t *limit_setting, uint16_t *limit1, uint16_t *limit2)
+void MSR_Reader::get_sample_lim_setting(sampletype type, uint8_t *rec_settings, uint8_t *alarm_settings, uint16_t *limit1, uint16_t *limit2)
 {
     uint8_t get_cmd[] = {0x88, 0x0A, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
-    *limit_setting = response[1];
+    *rec_settings = response[1] & 0x07;
+    *alarm_settings = response[1] & (0x07 << 3);
     *limit1 = (response[4] << 8) + response[3];
     *limit2 = (response[6] << 8) + response[5];
 }
@@ -507,8 +513,8 @@ void MSR_Reader::get_marker_setting(bool *marker_on, bool *alarm_confirm_on)
     uint8_t *response = new uint8_t[response_size];
     uint8_t get_cmd[] =  {0x88, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00};
     this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
-    for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
-    printf("\n");
+    //for(uint8_t i = 0; i < 7; i++) printf("%02X ", response[i]);
+    //printf("\n");
     *marker_on = response[2];
     *alarm_confirm_on = response[3];
     delete[] response;

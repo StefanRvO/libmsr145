@@ -19,4 +19,7 @@ class MSRTool : public MSRDevice
         virtual std::string get_interval_string();
         virtual float convert_to_unit(sampletype type, uint16_t value);
         virtual std::string get_sensor_string(sampletype type, uint16_t value);
+        virtual std::string get_start_settings_str();
+        virtual std::string get_sample_limit_str(sampletype type);
+        virtual std::string get_limits_str();
 };

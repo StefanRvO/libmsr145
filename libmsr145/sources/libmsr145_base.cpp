@@ -167,7 +167,7 @@ bool MSR_Base::is_recording()
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     this->send_command(first_placement_get, sizeof(first_placement_get), response, response_size);
-    bool recording_active = (response[1] == 0x83); //this byte defines if the device is currently recording
+    bool recording_active = (response[1] & 0x03); //this byte defines if the device is currently recording
     delete[] response;
     return recording_active;
 }
