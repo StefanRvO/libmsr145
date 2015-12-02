@@ -11,6 +11,8 @@
 #include <string>
 #include <boost/crc.hpp>
 #include <cstdio>
+#include <chrono>
+#include <thread> //sleep_for
 using namespace boost::asio;
 
 //sends the given command to the MSR145 and read out_length number of bytes from it into out
@@ -115,7 +117,7 @@ void MSR_Base::set_baud(uint32_t baudrate)
     }
     uint8_t command[] = {0x85, 0x01, baudbyte, 0x00, 0x00, 0x00, 0x00};
     this->send_command(command, sizeof(command), nullptr, 0);
-    usleep(20000); //We need to sleep a bit after changeing baud, else we will stall
+    std::this_thread::sleep_for(std::chrono::milliseconds(20)); //We need to sleep a bit after changeing baud, else we will stall
     this->port->set_option(serial_port_base::baud_rate( baudrate ));
 }
 
@@ -125,7 +127,6 @@ void MSR_Base::update_sensors()
     //0x8B 0x00 0x00 <address lsb> <address msb> <length lsb> <length msb>
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
     this->send_command(command, sizeof(command), nullptr, 8);
-    usleep(20000); //needed to prevent staaling when doing many succesive calls
 }
 
 void MSR_Base::format_memory()

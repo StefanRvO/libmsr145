@@ -444,8 +444,8 @@ void MSR_Reader::get_start_setting(bool *bufferon, startcondition *start)
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     this->send_command(get_cmd, sizeof(get_cmd), response, response_size);
-    for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
-    printf("\n");
+    //for(uint8_t i = 0; i < 8; i++) printf("%02X ", response[i]);
+    //printf("\n");
     *bufferon = !(response[4] & 0x01);
     switch(response[2])
     {

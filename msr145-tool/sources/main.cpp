@@ -1,6 +1,17 @@
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <stefan@stefanrvo.dk> wrote this file.  As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return.
+ * ----------------------------------------------------------------------------
+ */
+
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <string>
+#include <thread>
+#include <chrono>
 #include "msr145_tool.hpp"
 
 #define COMMAND_LINE_ERROR 1
@@ -45,6 +56,12 @@ int handle_args(int argc, char const **argv,
             printf("\n");
             delete[] response;
         }
+    }
+    if(vm.count("format"))
+    {
+        std::cout << "Formating the memory. You got 5 seconds to cancel, else i will proceed." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        msr.format_memory();
     }
 
     if(vm.count("start"))
@@ -94,6 +111,7 @@ int main(int argc, char const **argv) {
             ("startstoppush", "Start and stop recording on buttonpush(--start required), overwrites starttime and stoptime")
             ("status,s", "Print current settings of the MSR145")
             ("rawcmd", po::value<std::vector<std::string> >()->multitoken(), "Send a raw command to the device and read the answer. last argument in list is lenght of answer")
+            ("format", "Format the memory")
             ;
         po::variables_map vm;
         try
