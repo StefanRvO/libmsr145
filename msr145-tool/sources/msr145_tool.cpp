@@ -11,9 +11,21 @@
 #include <ctime>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 static const char *timeformat = "%Y:%m:%d--%H:%M:%S";
 
+bool sampletype_cmp(sampletype &type1, sampletype &type2)
+{
+    return type1 < type2;
+}
+
+bool sample_cmp(sample &s1, sample &s2)
+{
+    if(s1.timestamp == s2.timestamp)
+        return sampletype_cmp(s1.type, s2.type);
+    return s1.timestamp < s2.timestamp;
+}
 
 void MSRTool::print_status()
 {
@@ -77,7 +89,15 @@ void MSRTool::extract_record(uint32_t rec_num, std::string seperator, std::ostre
     auto samples = get_samples(rec_list[rec_num]);
     out_stream << "Samples collected from an MSR145" << std::endl;
     out_stream << "Sampling start time: " << date_str << std::endl;
+    out_stream << std::endl;
+    out_stream << create_csv(samples, seperator);
+}
+
+std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seperator)
+{
+    std::stringstream csv;
     std::vector<sampletype> sampletypes;
+    //Create header with info about types and units
     for(auto &sample : samples)
     {
         if(std::find(sampletypes.begin(), sampletypes.end(), sample.type) == std::end(sampletypes))
@@ -85,16 +105,41 @@ void MSRTool::extract_record(uint32_t rec_num, std::string seperator, std::ostre
             sampletypes.push_back(sample.type);
         }
     }
-    out_stream << "Timestamp (s)" << seperator;
+    std::sort(sampletypes.begin(), sampletypes.end(), sampletype_cmp);
+    csv << "Timestamp (s)" << seperator;
     for(auto &type : sampletypes)
     {
         std::string type_str, unit_str;
         get_type_str(type, type_str, unit_str);
-        out_stream << type_str << " (" << unit_str << ")" << seperator;
+        csv << type_str << " (" << unit_str << ")" << seperator;
     }
-    out_stream << std::endl;
-//    uint64_t last_timestamp = 0xFFFFFFFFFFFFFFFF;
-
+    csv << std::endl;
+    //Create the sample lines
+    //sort samples according to time and type
+    std::sort(samples.begin(), samples.end(), sample_cmp);
+    uint64_t last_stamp = 0xFFFFFFFFFFFFFFFF;
+    size_t placement = 0;
+    for(auto &sample : samples)
+    {
+        if(sample.timestamp != last_stamp)
+        {
+            placement = 0;
+            last_stamp = sample.timestamp;
+        }
+        if(placement == 0)
+        {
+            csv << std::endl;
+            csv << sample.timestamp / 512. << seperator;
+            placement++;
+        }
+        while(sample.type != sampletypes[placement - 1])
+        {
+            placement++;
+            csv << seperator;
+        }
+        csv << convert_to_unit(sample.type, sample.value);
+    }
+    return csv.str();
 }
 
 void MSRTool::get_type_str(sampletype type, std::string &type_str, std::string &unit_str)

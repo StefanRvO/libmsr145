@@ -36,4 +36,5 @@ class MSRTool : public MSRDevice
         virtual void get_type_str(sampletype type, std::string &type_str, std::string &unit_str);
         virtual void list_recordings();
         virtual void extract_record(uint32_t rec_num, std::string seperator, std::ostream &out_stream);
+        virtual std::string create_csv(std::vector<sample> &samples, std::string &seperator);
 };

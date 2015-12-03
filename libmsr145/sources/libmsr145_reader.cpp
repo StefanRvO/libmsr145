@@ -288,6 +288,7 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
     {
         auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
         if(cur_sample.type == sampletype::end) break;
+        if(cur_sample.type == sampletype::timestamp) continue;
         samples.push_back(cur_sample);
     }
     return samples;
