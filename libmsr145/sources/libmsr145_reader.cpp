@@ -77,6 +77,7 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     entry.isRecording = active;
     return entry;
 }
+
 std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
 {
     std::vector<rec_entry> rec_addresses;
@@ -167,10 +168,50 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
     return rec_addresses;
 }
 
-std::vector<uint8_t> MSR_Reader::get_raw_recording(rec_entry record)
+
+void MSR_Reader::add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
+    bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr)
+{
+    //load the data into the vector. ignore first 9 bytes(for now), they are timestamp, etc
+    std::vector<uint8_t> samples;
+
+    for(uint16_t j = start_pos; j < response_size - 1; j += 4)
+    {
+        if(response[j] == 0xFF && response[j + 1] == 0xFF && response[j + 2] == 0xFF && response[j + 3] == 0xFF)
+        {
+            end = true;
+            if(live && j == start_pos)  //this means that we are trying to access the current page.
+            {
+                get_live_data(sample_pages, cur_addr, page_num == 0);  //Fetch the data by other means.
+                //printf("%d\n\n\n", j);
+            }
+            break;
+        }
+        for(uint8_t k = 0; k < 4; k++)
+            samples.push_back(response[j + k]);
+    }
+    std::pair<std::vector<uint8_t>, uint64_t> sample_page;
+    sample_page.first = samples;
+    sample_page.second = get_page_timestamp(response);
+    sample_pages.push_back(sample_page);
+}
+
+uint64_t MSR_Reader::get_page_timestamp(__attribute__((unused))uint8_t *response)
+{
+    uint64_t entry_time_seconds = 0;
+    for(uint8_t i = 7; i > 1; i--)
+    {
+        entry_time_seconds += response[i];
+        if(i == 2) break;
+        entry_time_seconds <<= 8;
+    }
+    return entry_time_seconds;
+}
+
+std::vector<std::pair<std::vector<uint8_t>, uint64_t> > MSR_Reader::get_raw_recording(rec_entry record)
 { //recordings are read from the smallest memory location to the largest
     if(!is_recording()) record.isRecording = false; //if we are not recording, this field is forced to be false.
-    std::vector<uint8_t> recordData;
+    std::vector<std::pair<std::vector<uint8_t>, uint64_t> > sample_pages;
     size_t response_size = 0x0422;
     uint8_t *response = new uint8_t[response_size];
 
@@ -187,8 +228,6 @@ std::vector<uint8_t> MSR_Reader::get_raw_recording(rec_entry record)
         fetch_command[3] = cur_addr & 0xFF;
         fetch_command[4] = cur_addr >> 8;
         this->send_command(fetch_command, sizeof(fetch_command), response, response_size);
-
-        //load the data into the vector. ignore first 9 bytes(for now), they are timestamp, etc
         uint16_t start_pos;
         if(i == 0)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
@@ -199,28 +238,15 @@ std::vector<uint8_t> MSR_Reader::get_raw_recording(rec_entry record)
         {
             start_pos = 17;
         }
-        for(uint16_t j = start_pos; j < response_size - 1; j += 4)
-        {
-            if(response[j] == 0xFF && response[j + 1] == 0xFF && response[j + 2] == 0xFF && response[j + 3] == 0xFF)
-            {
-                end = true;
-                if(record.isRecording && j == start_pos)  //this means that we are trying to access the current page.
-                {
-                    get_live_data(cur_addr, &recordData, i == 0);  //Fetch the data by other means.
-                    //printf("%d\n\n\n", j);
-                }
-                break;
-            }
-            for(uint8_t k = 0; k < 4; k++)
-                recordData.push_back(response[j + k]);
-        }
+        add_raw_samples(sample_pages, end, response, response_size, start_pos, record.isRecording, i, cur_addr);
     }
     this->set_baud(9600);
     delete[] response;
-    return recordData;
+    return sample_pages;
 }
 
-void MSR_Reader::get_live_data(uint16_t cur_addr,std::vector<uint8_t> *recording_data, bool isFirstPage)
+void MSR_Reader::get_live_data(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
+    uint16_t cur_addr, bool isFirstPage)
 {   //Beware, this may contain bugs! Hard to debug, as the timing may be different each time.
 
     //first, fetch the data from the "live" page, using the special command.
@@ -248,48 +274,38 @@ void MSR_Reader::get_live_data(uint16_t cur_addr,std::vector<uint8_t> *recording
         get_live_page[6] = length >> 8;
         this->send_command(get_live_page, sizeof(get_live_page), live_data, length + 2);
         //read page into vector
-        for(uint16_t i = start_pos; i < response_size - 1; i += 4)
-        {
-            if(page_data[i] == 0xFF && page_data[i + 1] == 0xFF && page_data[i + 2] == 0xFF && page_data[i + 3] == 0xFF)
-                break;
-            for(uint8_t j = 0; j < 4; j++)
-            {
-                recording_data->push_back(page_data[i + j]);
-                //data.push_back(page_data[i + j]);
-            }
-        }
+        add_raw_samples(sample_pages, isFirstPage, page_data, response_size, start_pos, 0, 1, cur_addr);
         //startpos will be 17 now
         start_pos = 17;
     }
     //read livedata into vector
-    for(uint16_t i = start_pos; i < length - 1; i += 4)
-    {
-        if(live_data[i] == 0xFF && live_data[i + 1] == 0xFF && live_data[i + 2] == 0xFF && live_data[i + 3] == 0xFF)
-            break;
-        for(uint8_t j = 0; j < 4; j++)
-        {
-            recording_data->push_back(live_data[i + j]);
-            //data.push_back(live_data[i + j]);
-
-        }
-    }
+    add_raw_samples(sample_pages, isFirstPage, live_data, length, start_pos, 0, 1, cur_addr);
     //for(size_t i = 0; i < data.size(); i+=4) printf("%02X %02X %02X %02X\n", data[i], data[i + 1], data[i +2], data[i + 3]);
     delete[] live_data;
     delete[] page_data;
 }
 
+
 std::vector<sample> MSR_Reader::get_samples(rec_entry record)
 {
     std::vector<sample> samples;
-    auto rawdata = this->get_raw_recording(record);
-    uint64_t timestamp = 0; //time since start of record in 1/512 seconds
+    auto pages = this->get_raw_recording(record);
+    uint64_t timestamp = 0; //time since start of record in 1/131072 seconds
     //run through the raw data and convert it to samples
-    for(size_t i = 0; i < rawdata.size(); i += 4)
+    uint64_t start_time = pages[0].second;
+    for( auto &page : pages)
     {
-        auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
-        if(cur_sample.type == sampletype::end) break;
-        if(cur_sample.type == sampletype::timestamp) continue;
-        samples.push_back(cur_sample);
+        auto &rawdata = page.first;
+        //printf("%f\n", timestamp / (512. * (1 << 8)));
+        timestamp = page.second - start_time; // adjust timestamp to the one given at page start
+        //printf("%f\n\n", timestamp / (512. * (1 << 8)));
+        for(size_t i = 0; i < rawdata.size(); i += 4)
+        {
+            auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
+            if(cur_sample.type == sampletype::end) break;
+            if(cur_sample.type == sampletype::timestamp) continue;
+            samples.push_back(cur_sample);
+        }
     }
     return samples;
 }
@@ -328,9 +344,9 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
             //it's a flag. If set, the time is in seconds, else it's in 1/512 seconds.
             //The last 11 bits is a signed int.
             if(time_bits & 0x0800)
-                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (512);
+                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (1 << 17);
             else
-                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 );
+                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (1 << 8);
             break;
         }
         case sampletype::timestamp:
@@ -338,7 +354,7 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
             //this is a special type, which is used when the timediff can't fit into the normal sample
             //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
             uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
-            timediff *= 256; //the unit of total_time is 1/512 seconds
+            timediff *= (1 << 16); //the unit of total_time is 1/512 seconds
             *total_time += timediff;
             break;
         }

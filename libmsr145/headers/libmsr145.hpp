@@ -86,12 +86,16 @@ class MSR_Reader : virtual public MSR_Base
             uint8_t *alarm_settings, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
         virtual void get_marker_setting(bool *marker_on, bool *alarm_confirm_on);
-        virtual void get_live_data(uint16_t cur_addr, std::vector<uint8_t> *recording_data, bool isFirstPage);
+        virtual void get_live_data(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
+            uint16_t cur_addr, bool isFirstPage);
         virtual void get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
             uint16_t *point_2_target, uint16_t *point_2_actual);
+        virtual void add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
+            bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr);
+        virtual uint64_t get_page_timestamp(uint8_t *response);
 
     protected:
-        virtual std::vector<uint8_t> get_raw_recording(rec_entry record);
+        virtual std::vector<std::pair<std::vector<uint8_t>, uint64_t> > get_raw_recording(rec_entry record);
         virtual sample convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time);
         virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active);
 };

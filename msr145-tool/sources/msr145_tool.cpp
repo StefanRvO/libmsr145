@@ -117,10 +117,12 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
     //Create the sample lines
     //sort samples according to time and type
     std::sort(samples.begin(), samples.end(), sample_cmp);
+    std::unique(samples.begin(), samples.end(), sample_cmp);
     uint64_t last_stamp = 0xFFFFFFFFFFFFFFFF;
     size_t placement = 0;
     for(auto &sample : samples)
     {
+        //if(sample.timestamp == 5457) printf("%08X\n", sample.rawsample);
         if(sample.timestamp != last_stamp)
         {
             placement = 0;
@@ -129,7 +131,7 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
         if(placement == 0)
         {
             csv << std::endl;
-            csv << sample.timestamp / 512. << seperator;
+            csv << sample.timestamp / double((1 << 17))  << seperator;
             placement++;
         }
         while(sample.type != sampletypes[placement - 1])
