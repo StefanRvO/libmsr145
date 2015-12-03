@@ -77,7 +77,7 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     entry.isRecording = active;
     return entry;
 }
-std::vector<rec_entry> MSR_Reader::get_rec_list()
+std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
 {
     std::vector<rec_entry> rec_addresses;
     uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -128,7 +128,7 @@ std::vector<rec_entry> MSR_Reader::get_rec_list()
     //this command fetches the data at the adress given by byte 4 and 5
     next_placement_get[3] = cur_address & 0xFF;
     next_placement_get[4] = cur_address >> 8;
-    while(cur_address != 0x1FFF)
+    while(cur_address != 0x1FFF && (rec_addresses.size() < max_num || max_num == 0))
     {
         this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
         //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);

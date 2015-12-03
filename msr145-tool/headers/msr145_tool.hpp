@@ -10,6 +10,7 @@
 #pragma once
 #include "libmsr145.hpp"
 #include <string>
+#include <ostream>
 class MSRTool : public MSRDevice
 {
     public:
@@ -27,8 +28,12 @@ class MSRTool : public MSRDevice
         virtual std::string get_end_time_str();
         virtual std::string get_interval_string();
         virtual float convert_to_unit(sampletype type, uint16_t value);
-        virtual std::string get_sensor_string(sampletype type, uint16_t value);
+        virtual std::string get_sensor_str(sampletype type, uint16_t value);
         virtual std::string get_start_settings_str();
         virtual std::string get_sample_limit_str(sampletype type);
         virtual std::string get_limits_str();
+        virtual std::string get_calibration_str();
+        virtual void get_type_str(sampletype type, std::string &type_str, std::string &unit_str);
+        virtual void list_recordings();
+        virtual void extract_record(uint32_t rec_num, std::string seperator, std::ostream &out_stream);
 };

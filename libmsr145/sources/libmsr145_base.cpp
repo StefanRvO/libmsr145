@@ -38,13 +38,13 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
     auto checksum = calc_chksum(command, command_length);
     do
     {
-        //for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
+        for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
         write(*(this->port), buffer(command, command_length));
         write(*(this->port), buffer(&checksum, sizeof(checksum)));
         size_t read_bytes = read(*(this->port), buffer(out, out_length), transfer_exactly(out_length));
         assert(read_bytes == out_length);
         assert(out_length == 0 || (out[out_length - 1] == calc_chksum(out, out_length - 1)));
-        //for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
+        for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
     }   while(out_length && (out[0] & 0x20) && ++tries < 3 );
     if(out_length && (out[0] & 0x20) ) returncode = 1; // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
@@ -76,8 +76,19 @@ MSR_Base::MSR_Base(std::string _portname)
     this->port->set_option(serial_port_base::baud_rate( MSR_BUAD_RATE ));
     this->port->set_option(serial_port_base::stop_bits( MSR_STOP_BITS ));
     this->port->set_option(serial_port_base::character_size( MSR_WORD_length ));
-    //read_timer = new deadline_timer(this->ioservice);
+    //this->port->set_option(serial_port::flow_control(serial_port::flow_control::hardware));
+    auto native_handle = this->port->native_handle();
+    int status;
 
+    //Manually clear RTS. This should be fixed, as it won't work on windows.
+    ioctl(native_handle,TIOCMGET,&status); /* GET the State of MODEM bits in Status */
+    status &= !TIOCM_RTS;        // clear the RTS pin
+    ioctl(native_handle, TIOCMSET, status);
+
+
+    //read_timer = new deadline_timer(this->ioservice);
+    //read_timer->expires_at(boost::posix_time::pos_infin);
+    //check_deadline();
 }
 
 MSR_Base::~MSR_Base()

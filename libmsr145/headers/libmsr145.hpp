@@ -26,6 +26,7 @@ class MSR_Base
         boost::asio::serial_port *port;
         boost::asio::io_service ioservice;
         std::string portname;
+        boost::asio::deadline_timer *read_timer;
     public:
         MSR_Base(std::string _portname);
         virtual ~MSR_Base();
@@ -74,7 +75,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual struct tm get_device_time();
         virtual struct tm get_start_time();
         virtual struct tm get_end_time();
-        virtual std::vector<rec_entry> get_rec_list(); //only work when recording is not active
+        virtual std::vector<rec_entry> get_rec_list(size_t max_num = 0);
         virtual std::vector<sample> get_samples(rec_entry record);
         virtual std::vector<uint16_t> get_sensor_data(std::vector<sampletype> &types);
         virtual uint32_t get_timer_interval(timer t);
