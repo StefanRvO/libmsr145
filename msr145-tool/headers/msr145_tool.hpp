@@ -11,6 +11,9 @@
 #include "libmsr145.hpp"
 #include <string>
 #include <ostream>
+typedef std::pair<float, std::vector<active_measurement::active_measurement> > measure_interval_pair;
+
+
 class MSRTool : public MSRDevice
 {
     public:
@@ -37,4 +40,7 @@ class MSRTool : public MSRDevice
         virtual void list_recordings();
         virtual void extract_record(uint32_t rec_num, std::string seperator, std::ostream &out_stream);
         virtual std::string create_csv(std::vector<sample> &samples, std::string &seperator);
+        virtual void set_measurement_and_timers(std::vector<measure_interval_pair> interval_typelist);
+        virtual void set_name(std::string name);
+        virtual void set_calibration_date(uint16_t year, uint16_t month, uint16_t day);
 };

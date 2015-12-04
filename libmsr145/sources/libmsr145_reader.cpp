@@ -427,9 +427,29 @@ std::string MSR_Reader::get_calibration_name()
     delete[] response;
     return name;
 }
+std::string MSR_Reader::get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day)
+{
+    //first, collect the first 6 chars of the namespace
+    std::string name;
+    size_t response_size = 8;
+    uint8_t command_first[] = {0x83, 0x05, 0x02, 0x00, 0x00, 0x00, 0x00};
+    uint8_t command_second[] = {0x83, 0x05, 0x03, 0x00, 0x00, 0x00, 0x00};
+
+    uint8_t *response = new uint8_t[response_size];
+    this->send_command(command_first, sizeof(command_first), response, response_size);
+
+    name.append((const char *)response + 5, 2);
+    *year = response[1];
+    *month = response[2];
+    *day = response[3];
+    this->send_command(command_second, sizeof(command_second), response, response_size);
+    name.append((const char *)response + 1, 6);
+    delete[] response;
+    return name;
+}
 
 
-uint32_t MSR_Reader::get_timer_interval(timer t)
+uint32_t MSR_Reader::get_timer_interval(uint8_t t)
 {
     uint8_t *response = new uint8_t[8];
     uint8_t get_cmd[] = {0x83, 0x01, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
@@ -440,7 +460,7 @@ uint32_t MSR_Reader::get_timer_interval(timer t)
     return interval;
 }
 
-void MSR_Reader::get_active_measurements(timer t, uint8_t *measurements, bool *blink)
+void MSR_Reader::get_active_measurements(uint8_t t, uint8_t *measurements, bool *blink)
 {   //Reads which measurements are active for this timer.
     //Saves the result in the given measurement and blink pointers.
     //It is done this way as we both need to determine if blink is active,

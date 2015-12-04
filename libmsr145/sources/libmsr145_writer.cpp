@@ -121,9 +121,9 @@ void MSR_Writer::start_recording(startcondition start_set,
 }
 
 
-void MSR_Writer::set_timer_interval(timer t, uint64_t interval) //interval is in 1/512 seconds
+void MSR_Writer::set_timer_interval(uint8_t t, uint64_t interval) //interval is in 1/512 seconds
 {
-    uint8_t set_command[] = {0x84, 0x01, (uint8_t)t, 0x00, 0x00, 0x00, 0x00};
+    uint8_t set_command[] = {0x84, 0x01, t, 0x00, 0x00, 0x00, 0x00};
     set_command[3] = interval & 0xFF;
     set_command[4] = (interval >> 8) & 0xFF;
     set_command[5] = (interval >> 16) & 0xFF;
@@ -132,15 +132,15 @@ void MSR_Writer::set_timer_interval(timer t, uint64_t interval) //interval is in
 }
 
 
-void MSR_Writer::set_timer_measurements(timer t, uint8_t bitmask, bool blink)
+void MSR_Writer::set_timer_measurements(uint8_t t, uint8_t bitmask, bool blink, bool active)
 {   //printf("%02X", bitmask)
     uint8_t blinkbyte = blink << 7;
-    uint8_t settings[] = {0x84, 0x00, (uint8_t)t,
+    uint8_t settings[] = {0x84, 0x00, t,
         0x01, //control if timer is on or off
         0x00,
         bitmask,
         blinkbyte};
-        if(bitmask == 0x00 && blinkbyte == false) settings[3] = 0x00;
+        if(active == false) settings[3] = 0x00;
     this->send_command(settings, sizeof(settings), nullptr, 8);
 }
 

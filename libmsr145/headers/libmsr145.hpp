@@ -53,8 +53,8 @@ class MSR_Writer : virtual public MSR_Base
         virtual void set_time(struct tm *timeset = nullptr);
         virtual void start_recording(startcondition start_set,
             struct tm *starttime = nullptr, struct tm *stoptime = nullptr, bool ringbuffer = false);
-        virtual void set_timer_interval(timer t, uint64_t interval);
-        virtual void set_timer_measurements(timer t, uint8_t bitmask = 0x00, bool blink = 0);
+        virtual void set_timer_interval(uint8_t t, uint64_t interval);
+        virtual void set_timer_measurements(uint8_t t, uint8_t bitmask = 0x00, bool blink = 0, bool active = true);
         virtual void set_limit(sampletype type, uint16_t limit1, uint16_t limit2,
             limit_setting record_limit, limit_setting alarm_limit);
         virtual void reset_limits();
@@ -78,8 +78,8 @@ class MSR_Reader : virtual public MSR_Base
         virtual std::vector<rec_entry> get_rec_list(size_t max_num = 0);
         virtual std::vector<sample> get_samples(rec_entry record);
         virtual std::vector<uint16_t> get_sensor_data(std::vector<sampletype> &types);
-        virtual uint32_t get_timer_interval(timer t);
-        virtual void get_active_measurements(timer t, uint8_t *measurements, bool *blink);
+        virtual uint32_t get_timer_interval(uint8_t t);
+        virtual void get_active_measurements(uint8_t t, uint8_t *measurements, bool *blink);
         virtual void get_start_setting(bool *bufferon, startcondition *start);
         virtual uint16_t get_general_lim_settings();
         virtual void get_sample_lim_setting(sampletype type, uint8_t *rec_settings,
@@ -93,6 +93,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual void add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr);
         virtual uint64_t get_page_timestamp(uint8_t *response);
+        virtual std::string get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day);
 
     protected:
         virtual std::vector<std::pair<std::vector<uint8_t>, uint64_t> > get_raw_recording(rec_entry record);

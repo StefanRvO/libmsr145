@@ -56,8 +56,67 @@ void MSRTool::print_status()
     std::cout << "Limit settings:" << std::endl;
     std::cout << get_limits_str() << std::endl;
     std::cout << "Calibration settings:" << std::endl;
-    std::cout << "\tCalibration name:\t" << get_calibration_name() << std::endl;
+    uint8_t year, month, day;
+    std::cout << "\tCalibration name:\t" << get_calibration_name(&year, &month, &day) << std::endl;
+    std::cout << "\tCalibration date:\t" << (uint16_t)year + 2000 << ":" << month + 1 << ":" << day + 1 << std::endl;
     std::cout << get_calibration_str() << std::endl;
+
+}
+
+void MSRTool::set_name(std::string name)
+{
+    //First, read in calibration date and callibration name, as we need to set them at the same time.
+    uint8_t year, month, day;
+    auto calib_name = get_calibration_name(&year, &month, &day);
+    //write them
+    set_names_and_calibration_date(name, calib_name, year, month, day);
+}
+
+void MSRTool::set_calibration_date(uint16_t year, uint16_t month, uint16_t day)
+{
+    //read names first. We need to set them at the same time
+    auto calib_name = get_calibration_name();
+    auto device_name = get_name();
+    std::cout << year - 2000 << " " << month - 1 << " " << day - 1 << std::endl;
+    set_names_and_calibration_date(device_name, calib_name, year - 2000, month - 1, day - 1);
+}
+
+void MSRTool::set_measurement_and_timers(std::vector<measure_interval_pair> interval_typelist)
+{
+    uint8_t timer = 0;
+    for(auto &interval : interval_typelist)
+        if(interval.first < 1/256.)
+        {
+            std::cout << "Sorry, can't have shorter intervals than " << 1/256. << "seconds\n";
+            return;
+        }
+    if(interval_typelist.size() > 8)
+    {
+        std::cout << "Sorry, but can't have more than 8 different intervals!\n";
+        return;
+    }
+
+    for(auto &interval : interval_typelist)
+    {
+        bool blink = false;
+        bool active = false;
+        uint8_t bitmask = 0x00;
+        for(auto &type : interval.second)
+        {
+            if(type == active_measurement::blink) blink = true;
+            else bitmask |= type;
+            active = true;
+        }
+        uint32_t timer_interval = interval.first * 512; //interval is in 1/512 seconds and rounded down.
+        set_timer_interval(timer, timer_interval);
+        set_timer_measurements(timer, bitmask, blink, active);
+        timer++;
+    }
+    for(; timer < 8; timer++) //zero out the remaining timers
+    {
+        set_timer_interval(timer, 0);
+        set_timer_measurements(timer, 0, 0, 0);
+    }
 }
 
 void MSRTool::list_recordings()
@@ -360,10 +419,10 @@ std::string MSRTool::get_interval_string()
     std::vector<double> battery_intervals;
     for(uint8_t i = 0; i < 8; i++)
     {
-        auto interval = get_timer_interval((timer)i) / 512.;
+        auto interval = get_timer_interval(i) / 512.;
         uint8_t active_samples = 0;
         bool blink = false;
-        get_active_measurements((timer)i, &active_samples, &blink);
+        get_active_measurements(i, &active_samples, &blink);
         //std::cout << (int)active_samples << "\t" << interval << std::endl;
         if(blink)
             blink_intervals.push_back(interval);

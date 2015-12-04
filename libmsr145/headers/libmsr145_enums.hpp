@@ -7,20 +7,10 @@ namespace active_measurement
         humidity = 1 << 2,
         T1       = 1 << 3,
         bat      = 1 << 4,
+        blink    = 1 << 16,
     };
 }
 
-enum timer
-{
-    t0 = 0x00, //called t1 by windows software.
-    t1 = 0x01,
-    t2 = 0x02,
-    t3 = 0x03,
-    t4 = 0x04,
-    t5 = 0x05,
-    t6 = 0x06, //called t2 by windows software.
-    t7 = 0x07, //used for setting blinkrate in windows software.
-};
 
 enum startcondition
 {

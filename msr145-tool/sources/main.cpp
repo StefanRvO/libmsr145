@@ -18,13 +18,21 @@
 #define COMMAND_LINE_ERROR 1
 #define UNHANDLED_EXCEPTION 2
 namespace po = boost::program_options;
+
 //Forward declarations
 int handle_args(int argc, char const **argv,
     po::options_description &desc, po::positional_options_description &p, po::variables_map &vm);
 int handle_extract_args(__attribute__((unused))po::variables_map &vm, MSRTool &msr);
 int handle_start_args(po::variables_map &vm, MSRTool &msr);
+int add_to_intervallist(std::vector<float> &interval_list, active_measurement::active_measurement type,
+    std::vector<measure_interval_pair> &interval_type_list);
+
 int main(int argc, char const **argv);
 
+bool measure_interval_pair_cmp(measure_interval_pair &p1, measure_interval_pair &p2)
+{
+    return p1.first < p2.first;
+}
 
 int handle_args(int argc, char const **argv,
     po::options_description &desc, po::positional_options_description &p, po::variables_map &vm)
@@ -80,6 +88,20 @@ int handle_args(int argc, char const **argv,
     {
         handle_extract_args(vm, msr);
     }
+    if(vm.count("setname"))
+    {
+        msr.set_name(vm["setname"].as<std::string>());
+    }
+    if(vm.count("setcalibdate"))
+    {
+        auto vec = vm["setcalibdate"].as<std::vector<uint16_t> >();
+        if(vec.size() != 3)
+        {
+            std::cout << "setcalibdate need excatly three aruments!" << std::endl;
+            return 1;
+        }
+        msr.set_calibration_date(vec[0], vec[1], vec[2]);
+    }
     if(vm.count("start"))
     {   //should be last arg to check
         return handle_start_args(vm, msr);
@@ -107,9 +129,33 @@ int handle_extract_args(__attribute__((unused))po::variables_map &vm, MSRTool &m
 
 int handle_start_args(po::variables_map &vm, MSRTool &msr)
 {
+    if(vm.count("pressure") || vm.count("humidity") || vm.count("battery") || vm.count("blink"))
+    {   //recording options
+        std::vector<measure_interval_pair> interval_typelist;
+        if(vm.count("pressure"))
+        {
+            auto ist = vm["pressure"].as<std::vector<float> >();
+            add_to_intervallist(ist, active_measurement::pressure, interval_typelist);
+        }
+        if(vm.count("humidity"))
+        {
+            auto list = vm["humidity"].as<std::vector<float> >();
+            add_to_intervallist(list, active_measurement::humidity, interval_typelist);
+        }
+        if(vm.count("battery"))
+        {
+            auto list = vm["battery"].as<std::vector<float> >();
+            add_to_intervallist(list, active_measurement::bat, interval_typelist);
+        }
+        if(vm.count("blink"))
+        {
+            auto list = vm["blink"].as<std::vector<float> >();
+            add_to_intervallist(list, active_measurement::blink, interval_typelist);
+        }
+        msr.set_measurement_and_timers(interval_typelist);
+    }
     std::string starttime_str;
     std::string stoptime_str;
-    std::string startoption;
     bool ringbuff = vm.count("ringbuffer");
     if(vm.count("startstoppush"))
     {
@@ -130,6 +176,37 @@ int handle_start_args(po::variables_map &vm, MSRTool &msr)
         stoptime_str = vm["stoptime"].as<std::string>();
     }
     msr.start_recording(starttime_str, stoptime_str, ringbuff);
+    return 0;
+}
+
+int add_to_intervallist(std::vector<float> &interval_list, active_measurement::active_measurement type,
+    std::vector<measure_interval_pair> &interval_type_list)
+{
+    for(auto interval : interval_list)
+    {
+        //find the interval in the interval_type list
+        measure_interval_pair *interval_ptr = nullptr;
+        for(auto &num : interval_type_list)
+        {
+            if(num.first == interval)
+            {
+                interval_ptr = &num;
+                break;
+            }
+        }
+        //put in a new interval if it doesn't exist.
+        if(interval_ptr == nullptr)
+        {
+            measure_interval_pair new_pair;
+            new_pair.first = interval;
+            new_pair.second.push_back(type);
+            interval_type_list.push_back(new_pair);
+        }
+        else
+        {
+            interval_ptr->second.push_back(type);
+        }
+    }
     return 0;
 }
 
@@ -154,6 +231,12 @@ int main(int argc, char const **argv) {
             ("extract,X", po::value<uint32_t>(),     "extract a recording from the device, the record number is given as argument")
             ("seperator", po::value<std::string>(), "The seperator used when extracting")
             ("outfile,o", po::value<std::string>(), "The file extracted to, default is stdout")
+            ("pressure",  po::value<std::vector<float> >()->multitoken(), "Record pressure. Arguments are intervals (--start required)")
+            ("humidity",  po::value<std::vector<float> >()->multitoken(), "Record humidity. Arguments are intervals(--start required)")
+            ("battery",  po::value<std::vector<float> >()->multitoken(), "Record battery. Arguments are intervals(--start required)")
+            ("blink",  po::value<std::vector<float> >()->multitoken(), "Blink blue led. Arguments are intervals(--start required)")
+            ("setname", po::value<std::string>(), "Set the name of the device")
+            ("setcalibdate", po::value<std::vector<uint16_t> >()->multitoken(), "Set the calibration date. Give three arguments, year, month, day")
             ;
         po::positional_options_description p;
         p.add("device", 1);
