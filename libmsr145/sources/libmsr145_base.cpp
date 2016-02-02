@@ -28,7 +28,6 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
     //Returns 0 on success
 {
     int returncode = 0;
-    uint8_t tries = 0;
     bool selfalloced = false;
     if(out == nullptr && out_length > 0)
     {
@@ -36,8 +35,6 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
         out = new uint8_t[out_length];
     }
     auto checksum = calc_chksum(command, command_length);
-    do
-    {
         //for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
         write(*(this->port), buffer(command, command_length));
         write(*(this->port), buffer(&checksum, sizeof(checksum)));
@@ -45,7 +42,7 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
         assert(read_bytes == out_length);
         assert(out_length == 0 || (out[out_length - 1] == calc_chksum(out, out_length - 1)));
         //for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
-    }   while(out_length && (out[0] & 0x20) && ++tries < 3 );
+        //std::this_thread::sleep_for(std::chrono::milliseconds(20)); //We need to sleep a bit after changeing baud, else we will stall
     if(out_length && (out[0] & 0x20) ) returncode = 1; // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
     return returncode;
@@ -76,19 +73,7 @@ MSR_Base::MSR_Base(std::string _portname)
     this->port->set_option(serial_port_base::baud_rate( MSR_BUAD_RATE ));
     this->port->set_option(serial_port_base::stop_bits( MSR_STOP_BITS ));
     this->port->set_option(serial_port_base::character_size( MSR_WORD_length ));
-    //this->port->set_option(serial_port::flow_control(serial_port::flow_control::hardware));
-    auto native_handle = this->port->native_handle();
-    int status;
-
-    //Manually clear RTS. This should be fixed, as it won't work on windows.
-    ioctl(native_handle,TIOCMGET,&status); /* GET the State of MODEM bits in Status */
-    status &= !TIOCM_RTS;        // clear the RTS pin
-    ioctl(native_handle, TIOCMSET, status);
-
-
-    //read_timer = new deadline_timer(this->ioservice);
-    //read_timer->expires_at(boost::posix_time::pos_infin);
-    //check_deadline();
+    this->port->set_option(serial_port::flow_control(serial_port::flow_control::none));
 }
 
 MSR_Base::~MSR_Base()
@@ -138,6 +123,7 @@ void MSR_Base::update_sensors()
     //0x8B 0x00 0x00 <address lsb> <address msb> <length lsb> <length msb>
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
     this->send_command(command, sizeof(command), nullptr, 8);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void MSR_Base::format_memory()
@@ -157,7 +143,10 @@ void MSR_Base::format_memory()
     {
         erase_cmd[3] = addr & 0xFF;
         erase_cmd[4] = addr >> 8;
-        this->send_command(erase_cmd, sizeof(erase_cmd), returnval, 8);
+        bool success = false;
+        while(!success)
+            if(this->send_command(erase_cmd, sizeof(erase_cmd), returnval, 8) == 0)
+                success = true;
         do
         {
             this->send_command(confirm_command, sizeof(confirm_command), returnval, 8);

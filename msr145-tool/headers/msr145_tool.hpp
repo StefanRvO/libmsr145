@@ -43,4 +43,9 @@ class MSRTool : public MSRDevice
         virtual void set_measurement_and_timers(std::vector<measure_interval_pair> interval_typelist);
         virtual void set_name(std::string name);
         virtual void set_calibration_date(uint16_t year, uint16_t month, uint16_t day);
+        virtual void set_calib_name(std::string name);
+        virtual uint16_t convert_from_unit(sampletype type, uint16_t value);
+        using MSR_Writer::set_calibrationdata;
+        virtual void set_calibrationdata(sampletype type, std::vector<float> points);
+    private:
 };

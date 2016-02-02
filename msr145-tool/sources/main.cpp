@@ -92,15 +92,29 @@ int handle_args(int argc, char const **argv,
     {
         msr.set_name(vm["setname"].as<std::string>());
     }
+    if(vm.count("setcalibname"))
+    {
+        msr.set_calib_name(vm["setcalibname"].as<std::string>());
+    }
     if(vm.count("setcalibdate"))
     {
         auto vec = vm["setcalibdate"].as<std::vector<uint16_t> >();
         if(vec.size() != 3)
         {
-            std::cout << "setcalibdate need excatly three aruments!" << std::endl;
+            std::cout << "setcalibdate needs excatly three aruments!" << std::endl;
             return 1;
         }
         msr.set_calibration_date(vec[0], vec[1], vec[2]);
+    }
+    if(vm.count("calib_pressure"))
+    {
+        auto vec = vm["calib_pressure"].as<std::vector<float> >();
+        msr.set_calibrationdata(sampletype::pressure, vec);
+    }
+    if(vm.count("calib_humidity"))
+    {
+        auto vec = vm["calib_humidity"].as<std::vector<float> >();
+        msr.set_calibrationdata(sampletype::humidity, vec);
     }
     if(vm.count("start"))
     {   //should be last arg to check
@@ -237,6 +251,10 @@ int main(int argc, char const **argv) {
             ("blink",  po::value<std::vector<float> >()->multitoken(), "Blink blue led. Arguments are intervals(--start required)")
             ("setname", po::value<std::string>(), "Set the name of the device")
             ("setcalibdate", po::value<std::vector<uint16_t> >()->multitoken(), "Set the calibration date. Give three arguments, year, month, day")
+            ("setcalibname", po::value<std::string>(), "Set calibration name")
+            ("calib_temp_p", po::value<std::vector<float> >()->multitoken(), "set calibration settings for temperature(p)")
+            ("calib_humidity", po::value<std::vector<float> >()->multitoken(), "set calibration settings for humidity")
+
             ;
         po::positional_options_description p;
         p.add("device", 1);

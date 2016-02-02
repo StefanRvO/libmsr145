@@ -1,4 +1,24 @@
 #pragma once
+
+namespace active_calibrations
+{
+    enum active_calibrations
+    {
+        humidity =          1 << 0,
+        temperature_T =     1 << 1,
+        temperature_RH =    1 << 2,
+    };
+}
+
+namespace calibration_type
+{
+    enum calibration_type
+    {
+        temperature = 0x07,
+        humidity    = 0x05,
+    };
+}
+
 namespace active_measurement
 {
     enum active_measurement

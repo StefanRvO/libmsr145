@@ -427,7 +427,7 @@ std::string MSR_Reader::get_calibration_name()
     delete[] response;
     return name;
 }
-std::string MSR_Reader::get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day)
+std::string MSR_Reader::get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day,uint8_t *active_calib)
 {
     //first, collect the first 6 chars of the namespace
     std::string name;
@@ -442,6 +442,7 @@ std::string MSR_Reader::get_calibration_name(uint8_t *year, uint8_t *month, uint
     *year = response[1];
     *month = response[2];
     *day = response[3];
+    *active_calib = response[4];
     this->send_command(command_second, sizeof(command_second), response, response_size);
     name.append((const char *)response + 1, 6);
     delete[] response;
@@ -556,7 +557,7 @@ void MSR_Reader::get_marker_setting(bool *marker_on, bool *alarm_confirm_on)
     *alarm_confirm_on = response[3];
     delete[] response;
 }
-void MSR_Reader::get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
+void MSR_Reader::get_calibrationdata(set_calibration type, uint16_t *point_1_target, uint16_t *point_1_actual,
     uint16_t *point_2_target, uint16_t *point_2_actual)
 {
     uint8_t *response = new uint8_t[8];

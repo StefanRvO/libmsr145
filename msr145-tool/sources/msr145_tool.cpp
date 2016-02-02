@@ -27,6 +27,8 @@ bool sample_cmp(sample &s1, sample &s2)
     return s1.timestamp < s2.timestamp;
 }
 
+
+
 void MSRTool::print_status()
 {
     update_sensors();
@@ -56,9 +58,6 @@ void MSRTool::print_status()
     std::cout << "Limit settings:" << std::endl;
     std::cout << get_limits_str() << std::endl;
     std::cout << "Calibration settings:" << std::endl;
-    uint8_t year, month, day;
-    std::cout << "\tCalibration name:\t" << get_calibration_name(&year, &month, &day) << std::endl;
-    std::cout << "\tCalibration date:\t" << (uint16_t)year + 2000 << ":" << month + 1 << ":" << day + 1 << std::endl;
     std::cout << get_calibration_str() << std::endl;
 
 }
@@ -66,19 +65,28 @@ void MSRTool::print_status()
 void MSRTool::set_name(std::string name)
 {
     //First, read in calibration date and callibration name, as we need to set them at the same time.
-    uint8_t year, month, day;
+    uint8_t year, month, day, active_mask;
     auto calib_name = get_calibration_name(&year, &month, &day);
     //write them
-    set_names_and_calibration_date(name, calib_name, year, month, day);
+    set_names_and_calibration_date(name, calib_name, year, month, day, active_mask);
+}
+void MSRTool::set_calib_name(std::string calib_name)
+{
+    //First, read in calibration date and device name, as we need to set them at the same time.
+    uint8_t year, month, day, active_mask;
+    auto device_name = get_calibration_name(&year, &month, &day, &active_mask);
+    //write them
+    set_names_and_calibration_date(device_name, calib_name, year, month, day, active_mask);
 }
 
 void MSRTool::set_calibration_date(uint16_t year, uint16_t month, uint16_t day)
 {
     //read names first. We need to set them at the same time
-    auto calib_name = get_calibration_name();
+    uint8_t tmp0, tmp1, tmp2, active_mask;
+    auto calib_name = get_calibration_name(&tmp0, &tmp1, &tmp2, &active_mask);
     auto device_name = get_name();
     std::cout << year - 2000 << " " << month - 1 << " " << day - 1 << std::endl;
-    set_names_and_calibration_date(device_name, calib_name, year - 2000, month - 1, day - 1);
+    set_names_and_calibration_date(device_name, calib_name, year - 2000, month - 1, day - 1, active_mask);
 }
 
 void MSRTool::set_measurement_and_timers(std::vector<measure_interval_pair> interval_typelist)
@@ -227,40 +235,57 @@ void MSRTool::get_type_str(sampletype type, std::string &type_str, std::string &
             type_str = "Battery";
             unit_str = "V";
             break;
+        case ext1: case ext2: case ext3: case ext4:
+            type_str = "T";
+            unit_str = "C";
         default:
             assert(false); //this should not happen
     }
+}
+std::string get_calibration_type_str(active_calibrations type)
+{
+    std::stringstream ret_str;
+    std::string type_str, unit_str;
+    sampletype s_type;
+    switch(type)
+    {
+        case active_calibrations::humidity;
+            s_type = sampletype::humidity;
+            break;
+        case active_calibrations::temperature_T;
+            s_type = sampletype::ext1;
+            break;
+        case active_calibrations::temperature_RH;
+            s_type = sampletype::T_humidity;
+            break;
+        default:
+            assert(false);
+    }
+
+    get_type_str(s_type, type_str, unit_str);
+    ret_str << "\tCalibration for " << type_str << " (" << unit_str << ") :";
+    while(tmp_ss.str().size() < 40  ) ret_str << " ";
+    ret_str << "P1_Target: " << convert_to_unit(s_type, point_1_target) << " ";
+    ret_str << "P1_Actual: " << convert_to_unit(s_type, point_1_actual) << " ";
+    ret_str << "P2_Target: " << convert_to_unit(s_type, point_2_target) << " ";
+    ret_str << "P2_Actual: " << convert_to_unit(s_type, point_2_actual) << " ";
+    return ret_str.str();
 }
 
 std::string MSRTool::get_calibration_str()
 {   //Return string with calibraion data
     std::stringstream ret_str;
-
-    for(uint8_t i = 0; i < 0xF; i++) //run through all the types
-    {
-        uint16_t point_1_target, point_1_actual, point_2_target, point_2_actual;
-        switch(i)
-        {
-            case sampletype::pressure: case sampletype::T_pressure:
-            case sampletype::humidity: case sampletype::T_humidity:
-            case sampletype::bat:
-            {
-                get_calibrationdata((sampletype)i, &point_1_target, &point_1_actual,
-                    &point_2_target, &point_2_actual);
-                std::string type_str, unit_str;
-                std::stringstream tmp_ss;
-                get_type_str((sampletype)i, type_str, unit_str);
-                    tmp_ss << "\tCalibration for " << type_str << " (" << unit_str << ") :";
-                    while(tmp_ss.str().size() < 40  ) tmp_ss << " ";
-                    tmp_ss << "P1_Target: " << convert_to_unit((sampletype)i, point_1_target) << " ";
-                    tmp_ss << "P1_Actual: " << convert_to_unit((sampletype)i, point_1_actual) << " ";
-                    tmp_ss << "P2_Target: " << convert_to_unit((sampletype)i, point_2_target) << " ";
-                    tmp_ss << "P2_Actual: " << convert_to_unit((sampletype)i, point_2_actual) << " ";
-                    ret_str << tmp_ss.str() << std::endl;
-                    break;
-            }
-        }
-    }
+    //first, get the name, date and mask
+    uint8_t year, month, day, active_mask;
+    std::cout << "\tCalibration name:\t" << get_calibration_name(&year, &month, &day, &active_mask) << std::endl;
+    std::cout << "\tCalibration date:\t" << (uint16_t)year + 2000 << ":" << month + 1 << ":" << day + 1 << std::endl;
+    std::vector<active_calibrations> types;
+    if(active_mask & active_calibrations::humidity)
+        ret_str << get_calibration_type_str(active_calibrations::humidity);
+    if(active_mask & active_calibrations::temperature_T)
+        ret_str << get_calibration_type_str(active_calibrations::temperature_T);
+    if(active_mask & active_calibrations::temperature_RH)
+        ret_str << get_calibration_type_str(active_calibrations::temperature_RH);
     return ret_str.str();
 }
 std::string MSRTool::get_limits_str()
@@ -405,6 +430,48 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
         default:
             assert(false); //this should not happen
     }
+}
+
+void MSRTool::set_calibrationdata(active_measurement type, std::vector<float> points)
+{
+    if(points.size() != 4)
+    {
+        std::cout << "Needs excatly four arguments to set calibration points" << std::endl;
+        return;
+    }
+    //get current data for active calibrations
+    uint8_t tmp0, tmp1, tmp2, active_mask;
+    get_calibration_name(&tmp0, &tmp1, &tmp2, &active_mask);
+
+    sampletype s_type;
+    switch(type)
+    {
+        case active_calibrations::humidity;
+            s_type = sampletype::humidity;
+            active_mask |=
+            break;
+        case active_calibrations::temperature_T;
+            s_type = sampletype::ext1;
+            break;
+        case active_calibrations::temperature_RH;
+            s_type = sampletype::T_humidity;
+            break;
+        default:
+            assert(false);
+    }
+    set_calibrationdata(s_type,
+        convert_from_unit(type, points[0]),
+        convert_from_unit(type, points[1]),
+        convert_from_unit(type, points[2]),
+        convert_from_unit(type, points[3]));
+
+}
+
+uint16_t MSRTool::convert_from_unit(sampletype type, uint16_t value)
+{
+    auto returnval = value/convert_to_unit(type, 1);
+    std::cout << returnval << std::endl;
+    return returnval;
 }
 
 std::string MSRTool::get_interval_string()
