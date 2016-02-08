@@ -20,13 +20,13 @@ bool sampletype_cmp(sampletype &type1, sampletype &type2)
     return type1 < type2;
 }
 
+
 bool sample_cmp(sample &s1, sample &s2)
 {
     if(s1.timestamp == s2.timestamp)
         return sampletype_cmp(s1.type, s2.type);
     return s1.timestamp < s2.timestamp;
 }
-
 
 
 void MSRTool::print_status()
@@ -66,7 +66,7 @@ void MSRTool::set_name(std::string name)
 {
     //First, read in calibration date and callibration name, as we need to set them at the same time.
     uint8_t year, month, day, active_mask;
-    auto calib_name = get_calibration_name(&year, &month, &day);
+    auto calib_name = get_calibration_name(&year, &month, &day, &active_mask);
     //write them
     set_names_and_calibration_date(name, calib_name, year, month, day, active_mask);
 }
@@ -242,29 +242,34 @@ void MSRTool::get_type_str(sampletype type, std::string &type_str, std::string &
             assert(false); //this should not happen
     }
 }
-std::string get_calibration_type_str(active_calibrations type)
+
+std::string MSRTool::get_calibration_type_str(active_calibrations::active_calibrations type)
 {
     std::stringstream ret_str;
     std::string type_str, unit_str;
     sampletype s_type;
     switch(type)
     {
-        case active_calibrations::humidity;
+        case active_calibrations::humidity:
             s_type = sampletype::humidity;
             break;
-        case active_calibrations::temperature_T;
+        case active_calibrations::temperature_T:
             s_type = sampletype::ext1;
             break;
-        case active_calibrations::temperature_RH;
+        case active_calibrations::temperature_RH:
             s_type = sampletype::T_humidity;
             break;
         default:
             assert(false);
     }
+    uint16_t point_1_target, point_1_actual, point_2_target, point_2_actual;
+
+    get_calibrationdata(s_type, &point_1_target, &point_1_actual,
+                    &point_2_target, &point_2_actual);
 
     get_type_str(s_type, type_str, unit_str);
     ret_str << "\tCalibration for " << type_str << " (" << unit_str << ") :";
-    while(tmp_ss.str().size() < 40  ) ret_str << " ";
+    while(ret_str.str().size() < 40  ) ret_str << " ";
     ret_str << "P1_Target: " << convert_to_unit(s_type, point_1_target) << " ";
     ret_str << "P1_Actual: " << convert_to_unit(s_type, point_1_actual) << " ";
     ret_str << "P2_Target: " << convert_to_unit(s_type, point_2_target) << " ";
@@ -279,7 +284,7 @@ std::string MSRTool::get_calibration_str()
     uint8_t year, month, day, active_mask;
     std::cout << "\tCalibration name:\t" << get_calibration_name(&year, &month, &day, &active_mask) << std::endl;
     std::cout << "\tCalibration date:\t" << (uint16_t)year + 2000 << ":" << month + 1 << ":" << day + 1 << std::endl;
-    std::vector<active_calibrations> types;
+    std::vector<active_calibrations::active_calibrations> types;
     if(active_mask & active_calibrations::humidity)
         ret_str << get_calibration_type_str(active_calibrations::humidity);
     if(active_mask & active_calibrations::temperature_T)
@@ -432,7 +437,7 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
     }
 }
 
-void MSRTool::set_calibrationdata(active_measurement type, std::vector<float> points)
+/*void MSRTool::set_calibrationdata(active_measurement::active_measurement type, std::vector<float> points)
 {
     if(points.size() != 4)
     {
@@ -446,14 +451,14 @@ void MSRTool::set_calibrationdata(active_measurement type, std::vector<float> po
     sampletype s_type;
     switch(type)
     {
-        case active_calibrations::humidity;
+        case active_calibrations::humidity:
             s_type = sampletype::humidity;
             active_mask |=
             break;
-        case active_calibrations::temperature_T;
+        case active_calibrations::temperature_T:
             s_type = sampletype::ext1;
             break;
-        case active_calibrations::temperature_RH;
+        case active_calibrations::temperature_RH:
             s_type = sampletype::T_humidity;
             break;
         default:
@@ -465,7 +470,7 @@ void MSRTool::set_calibrationdata(active_measurement type, std::vector<float> po
         convert_from_unit(type, points[2]),
         convert_from_unit(type, points[3]));
 
-}
+}*/
 
 uint16_t MSRTool::convert_from_unit(sampletype type, uint16_t value)
 {

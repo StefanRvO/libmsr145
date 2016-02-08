@@ -106,20 +106,20 @@ int handle_args(int argc, char const **argv,
         }
         msr.set_calibration_date(vec[0], vec[1], vec[2]);
     }
-    if(vm.count("calib_pressure"))
+    /*if(vm.count("calib_pressure"))
     {
         auto vec = vm["calib_pressure"].as<std::vector<float> >();
-        msr.set_calibrationdata(sampletype::pressure, vec);
+        msr.set_calibrationdata(active_measurement::pressure, vec);
     }
     if(vm.count("calib_humidity"))
     {
         auto vec = vm["calib_humidity"].as<std::vector<float> >();
-        msr.set_calibrationdata(sampletype::humidity, vec);
+        msr.set_calibrationdata(active_measurement::humidity, vec);
     }
     if(vm.count("start"))
     {   //should be last arg to check
         return handle_start_args(vm, msr);
-    }
+    }*/
 
     return 0;
 }

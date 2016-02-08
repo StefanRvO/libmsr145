@@ -36,6 +36,7 @@ class MSRTool : public MSRDevice
         virtual std::string get_sample_limit_str(sampletype type);
         virtual std::string get_limits_str();
         virtual std::string get_calibration_str();
+        std::string get_calibration_type_str(active_calibrations::active_calibrations type);
         virtual void get_type_str(sampletype type, std::string &type_str, std::string &unit_str);
         virtual void list_recordings();
         virtual void extract_record(uint32_t rec_num, std::string seperator, std::ostream &out_stream);
@@ -45,7 +46,6 @@ class MSRTool : public MSRDevice
         virtual void set_calibration_date(uint16_t year, uint16_t month, uint16_t day);
         virtual void set_calib_name(std::string name);
         virtual uint16_t convert_from_unit(sampletype type, uint16_t value);
-        using MSR_Writer::set_calibrationdata;
-        virtual void set_calibrationdata(sampletype type, std::vector<float> points);
+        //virtual void set_calibrationdata(active_measurement::active_measurement type, std::vector<float> points);
     private:
 };

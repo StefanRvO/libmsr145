@@ -42,11 +42,12 @@ int main()
 */
     //uint16_t data[4];
     //msr.setNamesAndCalibrationDate("BillyBob", "Gstar", 16, 5, 5);
-    for(uint16_t i = 0; i < 0x100; i++)
-        if(msr.set_calibrationdata((sampletype)i, 500, 600, 700, 800) == 0)
+    /*for(uint16_t i = 0; i < 0x100; i++)
+        if(msr.set_calibrationdata((active_calibrations::active_calibrations)i, 500, 600, 700, 800) == 0)
         {
             printf("%02X\n", i);
         }
+    */
     //msr.start_recording( startcondition::now, nullptr, nullptr, false);
 
 

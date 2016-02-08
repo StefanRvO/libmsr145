@@ -59,7 +59,7 @@ class MSR_Writer : virtual public MSR_Base
             limit_setting record_limit, limit_setting alarm_limit);
         virtual int reset_limits();
         virtual int set_marker_settings(bool marker_on, bool alarm_confirm_on);
-        virtual int set_calibrationdata(set_calibration type, uint16_t point_1_target, uint16_t point_1_actual,
+        virtual int set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
             uint16_t point_2_target, uint16_t point_2_actual);
         virtual void insert_time_in_command(struct tm *timeset, uint8_t *command);
 };
@@ -88,7 +88,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual void get_marker_setting(bool *marker_on, bool *alarm_confirm_on);
         virtual void get_live_data(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             uint16_t cur_addr, bool isFirstPage);
-        virtual void get_calibrationdata(set_calibration type, uint16_t *point_1_target, uint16_t *point_1_actual,
+        virtual void get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
             uint16_t *point_2_target, uint16_t *point_2_actual);
         virtual void add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr);

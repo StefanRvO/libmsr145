@@ -557,7 +557,7 @@ void MSR_Reader::get_marker_setting(bool *marker_on, bool *alarm_confirm_on)
     *alarm_confirm_on = response[3];
     delete[] response;
 }
-void MSR_Reader::get_calibrationdata(set_calibration type, uint16_t *point_1_target, uint16_t *point_1_actual,
+void MSR_Reader::get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
     uint16_t *point_2_target, uint16_t *point_2_actual)
 {
     uint8_t *response = new uint8_t[8];

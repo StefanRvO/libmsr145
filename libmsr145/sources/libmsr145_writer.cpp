@@ -171,7 +171,7 @@ int MSR_Writer::set_marker_settings(bool marker_on, bool alarm_confirm_on)
     return this->send_command(set_cmd, sizeof(set_cmd), nullptr, 8);
 }
 
-int MSR_Writer::set_calibrationdata(set_calibration type, uint16_t point_1_target, uint16_t point_1_actual,
+int MSR_Writer::set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
     uint16_t point_2_target, uint16_t point_2_actual)
 {
     uint8_t getpoint1[] = {0x89, 0x0C, (uint8_t)type, (uint8_t)(point_1_target & 0xFF), (uint8_t)(point_1_target >> 8),
