@@ -109,17 +109,17 @@ int handle_args(int argc, char const **argv,
     /*if(vm.count("calib_pressure"))
     {
         auto vec = vm["calib_pressure"].as<std::vector<float> >();
-        msr.set_calibrationdata(active_measurement::pressure, vec);
-    }
+        msr.set_calibrationpoints(active_calibrations::pressure, vec);
+    }*/
     if(vm.count("calib_humidity"))
     {
         auto vec = vm["calib_humidity"].as<std::vector<float> >();
-        msr.set_calibrationdata(active_measurement::humidity, vec);
+        msr.set_calibrationpoints(active_calibrations::humidity, vec);
     }
     if(vm.count("start"))
     {   //should be last arg to check
         return handle_start_args(vm, msr);
-    }*/
+    }
 
     return 0;
 }
@@ -252,7 +252,6 @@ int main(int argc, char const **argv) {
             ("setname", po::value<std::string>(), "Set the name of the device")
             ("setcalibdate", po::value<std::vector<uint16_t> >()->multitoken(), "Set the calibration date. Give three arguments, year, month, day")
             ("setcalibname", po::value<std::string>(), "Set calibration name")
-            ("calib_temp_p", po::value<std::vector<float> >()->multitoken(), "set calibration settings for temperature(p)")
             ("calib_humidity", po::value<std::vector<float> >()->multitoken(), "set calibration settings for humidity")
 
             ;

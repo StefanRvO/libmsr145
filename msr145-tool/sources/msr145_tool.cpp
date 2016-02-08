@@ -238,6 +238,7 @@ void MSRTool::get_type_str(sampletype type, std::string &type_str, std::string &
         case ext1: case ext2: case ext3: case ext4:
             type_str = "T";
             unit_str = "C";
+            break;
         default:
             assert(false); //this should not happen
     }
@@ -286,11 +287,11 @@ std::string MSRTool::get_calibration_str()
     std::cout << "\tCalibration date:\t" << (uint16_t)year + 2000 << ":" << month + 1 << ":" << day + 1 << std::endl;
     std::vector<active_calibrations::active_calibrations> types;
     if(active_mask & active_calibrations::humidity)
-        ret_str << get_calibration_type_str(active_calibrations::humidity);
+        ret_str << get_calibration_type_str(active_calibrations::humidity) << std::endl;
     if(active_mask & active_calibrations::temperature_T)
-        ret_str << get_calibration_type_str(active_calibrations::temperature_T);
+        ret_str << get_calibration_type_str(active_calibrations::temperature_T) << std::endl;
     if(active_mask & active_calibrations::temperature_RH)
-        ret_str << get_calibration_type_str(active_calibrations::temperature_RH);
+        ret_str << get_calibration_type_str(active_calibrations::temperature_RH) << std::endl;
     return ret_str.str();
 }
 std::string MSRTool::get_limits_str()
@@ -432,12 +433,15 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
         case bat:
             //return in unit of volts
             return value; //not figured out yet
+        case ext1: case ext2: case ext3: case ext4:
+            return value;
+
         default:
             assert(false); //this should not happen
     }
 }
 
-/*void MSRTool::set_calibrationdata(active_measurement::active_measurement type, std::vector<float> points)
+void MSRTool::set_calibrationpoints(active_calibrations::active_calibrations type, std::vector<float> points)
 {
     if(points.size() != 4)
     {
@@ -445,15 +449,14 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
         return;
     }
     //get current data for active calibrations
-    uint8_t tmp0, tmp1, tmp2, active_mask;
-    get_calibration_name(&tmp0, &tmp1, &tmp2, &active_mask);
-
+    uint8_t year, month, day, active_mask;
+    std::string calibName = get_calibration_name(&year, &month, &day, &active_mask);
+    std::string deviceName = get_name();
     sampletype s_type;
     switch(type)
     {
         case active_calibrations::humidity:
             s_type = sampletype::humidity;
-            active_mask |=
             break;
         case active_calibrations::temperature_T:
             s_type = sampletype::ext1;
@@ -464,13 +467,15 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
         default:
             assert(false);
     }
-    set_calibrationdata(s_type,
-        convert_from_unit(type, points[0]),
-        convert_from_unit(type, points[1]),
-        convert_from_unit(type, points[2]),
-        convert_from_unit(type, points[3]));
+    active_mask |= type;
+    MSR_Writer::set_calibrationdata(s_type,
+        convert_from_unit(s_type, points[0]),
+        convert_from_unit(s_type, points[1]),
+        convert_from_unit(s_type, points[2]),
+        convert_from_unit(s_type, points[3]));
+    set_names_and_calibration_date(deviceName, calibName, year, month, day, active_mask);
 
-}*/
+}
 
 uint16_t MSRTool::convert_from_unit(sampletype type, uint16_t value)
 {

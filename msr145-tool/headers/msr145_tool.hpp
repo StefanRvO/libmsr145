@@ -46,6 +46,6 @@ class MSRTool : public MSRDevice
         virtual void set_calibration_date(uint16_t year, uint16_t month, uint16_t day);
         virtual void set_calib_name(std::string name);
         virtual uint16_t convert_from_unit(sampletype type, uint16_t value);
-        //virtual void set_calibrationdata(active_measurement::active_measurement type, std::vector<float> points);
+        virtual void set_calibrationpoints(active_calibrations::active_calibrations type, std::vector<float> points);
     private:
 };
