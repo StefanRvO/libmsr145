@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <iomanip>
 
 static const char *timeformat = "%Y:%m:%d--%H:%M:%S";
 
@@ -60,7 +61,6 @@ void MSRTool::print_status()
     std::cout << get_limits_str() << std::endl;
     std::cout << "Calibration settings:" << std::endl;
     std::cout << get_calibration_str() << std::endl;
-
 }
 
 std::string MSRTool::get_firmware_version_str()
@@ -417,7 +417,7 @@ std::string MSRTool::get_sensor_str(sampletype type, uint16_t value)
     get_type_str(type, type_str, unit_str);
     ret_str << "\t" << type_str << " (" << unit_str << "):";
     while(ret_str.str().size() < 30) ret_str << " ";
-    ret_str << convert_to_unit(type, value);
+    ret_str << std::fixed << std::setprecision(2) << convert_to_unit(type, value);
     ret_str << std::endl;
 
     return ret_str.str();
@@ -440,8 +440,10 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
             //return in ⁰C
             return value/100.;
         case bat:
-            //return in unit of volts
-            return value; //not figured out yet
+            //return in unit of volts. There is a pretty weird conversion factor for some reason.
+            //The factor is not really vertified to be "the correct one".
+
+            return value/683.; //not figured out yet
         case ext1: case ext2: case ext3: case ext4:
             return value;
 
