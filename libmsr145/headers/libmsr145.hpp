@@ -94,6 +94,7 @@ class MSR_Reader : virtual public MSR_Base
             bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr);
         virtual uint64_t get_page_timestamp(uint8_t *response);
         virtual std::string get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *active_calib);
+        virtual void get_firmware_version(int *major, int *minor);
 
     protected:
         virtual std::vector<std::pair<std::vector<uint8_t>, uint64_t> > get_raw_recording(rec_entry record);

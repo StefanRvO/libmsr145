@@ -34,6 +34,7 @@ void MSRTool::print_status()
     update_sensors();
     std::cout << "Device Status:" << std::endl << std::endl;
     std::cout << "Serial Number:\t " << get_serial() << std::endl;
+    std::cout << "Firmware Version: " << get_firmware_version_str() << std::endl;
     std::cout << "Device Name:\t " << get_name() << std::endl;
     std::cout << "Device time:\t " << get_device_time_str() << std::endl;
     std::cout << "Device is recording:\t " << is_recording() << std::endl;
@@ -60,6 +61,14 @@ void MSRTool::print_status()
     std::cout << "Calibration settings:" << std::endl;
     std::cout << get_calibration_str() << std::endl;
 
+}
+
+std::string MSRTool::get_firmware_version_str()
+{
+    int major, minor;
+    get_firmware_version(&major, &minor);
+    std::string version_str = "V" + std::to_string(major) + "." + std::to_string(minor);
+    return version_str;
 }
 
 void MSRTool::set_name(std::string name)

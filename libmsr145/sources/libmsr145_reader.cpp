@@ -557,6 +557,7 @@ void MSR_Reader::get_marker_setting(bool *marker_on, bool *alarm_confirm_on)
     *alarm_confirm_on = response[3];
     delete[] response;
 }
+
 void MSR_Reader::get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
     uint16_t *point_2_target, uint16_t *point_2_actual)
 {
@@ -569,5 +570,16 @@ void MSR_Reader::get_calibrationdata(sampletype type, uint16_t *point_1_target, 
     this->send_command(getpoint2, sizeof(getpoint2), response, 8);
     *point_2_target = (response[4] << 8) + response[3];
     *point_2_actual = (response[6] << 8) + response[5];
+    delete[] response;
+}
+
+void MSR_Reader::get_firmware_version(int *major, int *minor)
+{
+    uint8_t *response = new uint8_t[8];
+    size_t respone_size = 8;
+    uint8_t getversion[] = {0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->send_command(getversion, sizeof(getversion), response, respone_size);
+    *major = response[4];
+    *minor = response[5];
     delete[] response;
 }
