@@ -14,9 +14,10 @@ This is very much a work in progress, and the API will NOT be stable for the for
 
 #####General:
 
-* Setting baudrate(If the baudrate is set to more than 38400 b/s, the device hangs if too many commands is sent in a row, also the baudrate is reset to 9600 b/s if a command have not been send in ~5 seconds).
+* Setting baudrate(The baudrate is reset to 9600 b/s if a command have not been send in ~5 seconds).
 * Calculation of 8-bit CRC checksum used by the protocol
 * Formatting the memory
+
 #####Reading:
 
 * Read name
@@ -49,13 +50,13 @@ This is very much a work in progress, and the API will NOT be stable for the for
 
 ###Not Working:
 
-* Reading MSR type and firmware version
+* Reading MSR type.
 * Anything to do with features not avaliable on the device i have access to, i.e. accelerometer, SD-Card, fluid-pressure, lightsensor, analog inputs.
 
 
 ###Known bugs:
 * Sometimes the communication with the MSR device will stall, and refuse to transfer more than a couple of commands at a time.
-
+* Setting of calibration data not working correctly, will cause the fields to be overwritten with FFFF.
 ##TODO
 * Fix bugs
 * Improve interface and make it consistent

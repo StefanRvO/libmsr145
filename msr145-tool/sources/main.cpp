@@ -17,7 +17,10 @@
 
 #define COMMAND_LINE_ERROR 1
 #define UNHANDLED_EXCEPTION 2
+
 namespace po = boost::program_options;
+
+void handlelimits(po::variables_map &vm, MSRTool &msr);
 
 //Forward declarations
 int handle_args(int argc, char const **argv,
@@ -26,6 +29,10 @@ int handle_extract_args(__attribute__((unused))po::variables_map &vm, MSRTool &m
 int handle_start_args(po::variables_map &vm, MSRTool &msr);
 int add_to_intervallist(std::vector<float> &interval_list, active_measurement::active_measurement type,
     std::vector<measure_interval_pair> &interval_type_list);
+limit_setting parse_alarm_limit(std::string limit_str);
+
+limit_setting parse_recording_limit(std::string limit_str);
+
 
 int main(int argc, char const **argv);
 
@@ -92,6 +99,10 @@ int handle_args(int argc, char const **argv,
     {
         msr.set_name(vm["setname"].as<std::string>());
     }
+    if(vm.count("settime"))
+    {
+        msr.set_time(vm["settime"].as<std::string>());
+    }
     if(vm.count("setcalibname"))
     {
         msr.set_calib_name(vm["setcalibname"].as<std::string>());
@@ -101,20 +112,32 @@ int handle_args(int argc, char const **argv,
         auto vec = vm["setcalibdate"].as<std::vector<uint16_t> >();
         if(vec.size() != 3)
         {
-            std::cout << "setcalibdate needs excatly three aruments!" << std::endl;
-            return 1;
+            throw po::error("setcalibdate needs excatly three aruments!");
         }
         msr.set_calibration_date(vec[0], vec[1], vec[2]);
     }
-    /*if(vm.count("calib_pressure"))
+    if(vm.count("calib_temp_humidity"))
     {
-        auto vec = vm["calib_pressure"].as<std::vector<float> >();
-        msr.set_calibrationpoints(active_calibrations::pressure, vec);
-    }*/
+        auto vec = vm["calib_temp_humidity"].as<std::vector<float> >();
+        msr.set_calibrationpoints(active_calibrations::temperature_RH, vec);
+    }
     if(vm.count("calib_humidity"))
     {
         auto vec = vm["calib_humidity"].as<std::vector<float> >();
         msr.set_calibrationpoints(active_calibrations::humidity, vec);
+    }
+    if(vm.count("calib_temp_T"))
+    {
+        auto vec = vm["calib_temp_T"].as<std::vector<float> >();
+        msr.set_calibrationpoints(active_calibrations::temperature_T, vec);
+    }
+    if(vm.count("setlimit"))
+    {
+        handlelimits(vm, msr);
+    }
+    if(vm.count("clearlimits"))
+    {
+        msr.reset_limits();
     }
     if(vm.count("start"))
     {   //should be last arg to check
@@ -123,7 +146,75 @@ int handle_args(int argc, char const **argv,
 
     return 0;
 }
-int handle_extract_args(__attribute__((unused))po::variables_map &vm, MSRTool &msr)
+
+void handlelimits(po::variables_map &vm, MSRTool &msr)
+{
+    if(!vm.count("limittype"))
+    {
+        std::cout << "no limittype set!" << std::endl;
+        return;
+    }
+    auto limittype_str = vm["limittype"].as<std::string>();
+    sampletype limittype;
+    if(limittype_str == "p" or limittype_str == "pressure")
+        limittype = pressure;
+    else if(limittype_str == "T_p" or limittype_str == "temp_pressure")
+        limittype = T_pressure;
+    else if(limittype_str == "RH" or limittype_str == "humidity")
+        limittype = humidity;
+    else if(limittype_str == "T_RH" or limittype_str == "temp_humidity")
+        limittype = T_humidity;
+    else if(limittype_str == "T_p" or limittype_str == "temp_pressure")
+        limittype = T_pressure;
+    else
+    {
+        throw po::error("limittype invalid!");
+        return;
+    }
+    float limit1 = 0, limit2 = 0;
+    if(vm.count("limit1")) limit1 = vm["limit1"].as<float>();
+    if(vm.count("limit2")) limit2 = vm["limit2"].as<float>();
+
+    limit_setting alarm_limit = no_limit;
+    limit_setting rec_limit = no_limit;
+    if(vm.count("alarmlimit")) alarm_limit = parse_alarm_limit(vm["alarmlimit"].as<std::string>());
+    if(vm.count("recordlimit")) rec_limit = parse_recording_limit(vm["recordlimit"].as<std::string>());
+    msr.set_limit(limittype, limit1, limit2, rec_limit, alarm_limit);
+}
+
+limit_setting parse_alarm_limit(std::string limit_str)
+{
+    limit_setting setting = no_limit;
+    if(limit_str == "S<L1") setting = alarm_less_limit1;
+    else if(limit_str == "S>L1") setting = alarm_more_limit1;
+    else if(limit_str == "L1<S<L2") setting = alarm_more_limit1;
+    else if(limit_str == "S<L1||S>L2") setting = alarm_more_limit1;
+    else if(limit_str == "none") setting = no_limit;
+    else
+    {
+        throw po::error("Invalid limit setting for alarm!");
+    }
+    return setting;
+}
+
+limit_setting parse_recording_limit(__attribute__((unused))std::string limit_str)
+{
+    limit_setting setting = no_limit;
+    if(limit_str == "S<L2") setting = rec_less_limit2;
+    else if(limit_str == "S>L2") setting = rec_more_limit2;
+    else if(limit_str == "L1<S<L2") setting = rec_more_limit1_and_less_limit2;
+    else if(limit_str == "S<L1||S>L2") setting = rec_less_limit1_or_more_limit2;
+    else if(limit_str == "START>L1,STOP<L2") setting = rec_start_more_limit1_stop_less_limit2;
+    else if(limit_str == "START<L1,STOP>L2") setting = rec_start_less_limit1_stop_more_limit2;
+    else if(limit_str == "none") setting = no_limit;
+    else
+    {
+        throw po::error("Invalid limit setting for record!");
+    }
+    return setting;
+}
+
+int handle_extract_args(po::variables_map &vm, MSRTool &msr)
 {
     std::string seperator = ",";
     std::filebuf fb;
@@ -252,7 +343,17 @@ int main(int argc, char const **argv) {
             ("setname", po::value<std::string>(), "Set the name of the device")
             ("setcalibdate", po::value<std::vector<uint16_t> >()->multitoken(), "Set the calibration date. Give three arguments, year, month, day")
             ("setcalibname", po::value<std::string>(), "Set calibration name")
-            ("calib_humidity", po::value<std::vector<float> >()->multitoken(), "set calibration settings for humidity")
+            ("calib_humidity", po::value<std::vector<float> >()->multitoken(), "set calibration settings for humidity (somewhat buggy)")
+            ("calib_temp_humidity", po::value<std::vector<float> >()->multitoken(), "set calibration settings for temperature (humidity sensor) (somewhat buggy)")
+            ("calib_temp_T", po::value<std::vector<float> >()->multitoken(), "set calibration settings for temperature (T sensor) (somewhat buggy)")
+            ("settime", po::value<std::string>()->implicit_value(""), "Set the device time. If no argument is given, the time is set to current time.")
+            ("setlimit", "Set a limit setting. Requires additional arguments for setting the actual limit")
+            ("limittype", po::value<std::string>(), "Which type of limit to set. Could be '(p)pressure', '(T_p)temp_pressure', '(RH)humidity' or (T_RH)temp_humidity")
+            ("alarmlimit", po::value<std::string>(), "Set an alarm limit, types are: 'none(default), 'S<L1', 'S>L1', 'L1<S<L2' and 'S<L1||S>L2'")
+            ("recordlimit", po::value<std::string>(), "Set an record limit, types are: 'none(default), 'S<L2', 'S>L2', 'L1<S<L2', 'S<L1||S>L2', 'START>L1,STOP<L2' and START<L1,STOP>L2")
+            ("limit1", po::value<float>(), "sets L1 for the given type, 0 is default")
+            ("limit2", po::value<float>(), "sets L2 for the given type, 0 is default")
+            ("clearlimits", "clear all limits")
 
             ;
         po::positional_options_description p;

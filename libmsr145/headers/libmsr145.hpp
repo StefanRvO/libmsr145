@@ -20,6 +20,7 @@
 #define MSR_WORD_length 8
 
 
+
 class MSR_Base
 {
     protected:
@@ -35,6 +36,8 @@ class MSR_Base
         virtual void format_memory();
         virtual void stop_recording();
         virtual bool is_recording();
+        virtual void get_calibrationdata(calibration_type::calibration_type type, uint16_t *point_1_target, uint16_t *point_1_actual,
+            uint16_t *point_2_target, uint16_t *point_2_actual); //unfortunately, we need to place this here, as it's needed in the writer 
     public: //protected:
         virtual int send_command(uint8_t *command, size_t command_length, uint8_t *out, size_t out_length);
         virtual void send_raw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
@@ -59,7 +62,7 @@ class MSR_Writer : virtual public MSR_Base
             limit_setting record_limit, limit_setting alarm_limit);
         virtual int reset_limits();
         virtual int set_marker_settings(bool marker_on, bool alarm_confirm_on);
-        virtual int set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
+        virtual int set_calibrationdata(calibration_type::calibration_type type, uint16_t point_1_target, uint16_t point_1_actual,
             uint16_t point_2_target, uint16_t point_2_actual);
         virtual void insert_time_in_command(struct tm *timeset, uint8_t *command);
 };
@@ -88,8 +91,6 @@ class MSR_Reader : virtual public MSR_Base
         virtual void get_marker_setting(bool *marker_on, bool *alarm_confirm_on);
         virtual void get_live_data(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             uint16_t cur_addr, bool isFirstPage);
-        virtual void get_calibrationdata(sampletype type, uint16_t *point_1_target, uint16_t *point_1_actual,
-            uint16_t *point_2_target, uint16_t *point_2_actual);
         virtual void add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr);
         virtual uint64_t get_page_timestamp(uint8_t *response);

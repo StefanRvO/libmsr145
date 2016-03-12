@@ -10,6 +10,7 @@
 #include "libmsr145.hpp"
 #include <string>
 #include <cstdio>
+#include <iostream>
 
 void MSR_Writer::insert_time_in_command(struct tm *timeset, uint8_t *command)
 {
@@ -38,11 +39,23 @@ int MSR_Writer::set_time(struct tm *timeset/* need to be a mktime() formated, eg
 int MSR_Writer::set_names_and_calibration_date(std::string deviceName, std::string calibrationName,
     uint8_t year, uint8_t month, uint8_t day, uint8_t active_calib)
 {   //These three settings needs to be set together, as they corrupt eachother if they are not.
+    //also, we need to read the calibration points and save them again, as these are also corrupted
+
     //years start at 0 = 2000.
     //months start at 0 = january.
     //Day start at 0 = 1th.
     //if name is shorter than 12 characters (length of name), append spaces
     //This is also done by the proprietary driver
+
+    //for saving the stored calibration points
+    uint16_t calibpoints[2][5];
+    calibpoints[0][0] = calibration_type::humidity;
+    calibpoints[1][0] = calibration_type::temperature;
+    for(int i = 0; i < 2; i++)
+    {
+        get_calibrationdata(calibration_type::calibration_type(calibpoints[i][0]), calibpoints[i] + 1, calibpoints[i] + 2, calibpoints[i] + 3, calibpoints[i] + 4);
+    }
+
     while(deviceName.size() < 12)
         deviceName.push_back(' ');
     while(calibrationName.size() < 8)
@@ -66,6 +79,13 @@ int MSR_Writer::set_names_and_calibration_date(std::string deviceName, std::stri
     returnval |= this->send_command(command_5, sizeof(command_5), nullptr, 8);
     returnval |= this->send_command(command_6, sizeof(command_6), nullptr, 8);
     returnval |= this->send_command(command_7, sizeof(command_7), nullptr, 8);
+
+    //set the read calibrations
+    for(int i = 0; i < 2; i++)
+    {
+        set_calibrationdata(calibration_type::calibration_type(calibpoints[i][0]), calibpoints[i][1], calibpoints[i][2], calibpoints[i][3], calibpoints[i][4]);
+    }
+
     return returnval;
 }
 
@@ -171,15 +191,16 @@ int MSR_Writer::set_marker_settings(bool marker_on, bool alarm_confirm_on)
     return this->send_command(set_cmd, sizeof(set_cmd), nullptr, 8);
 }
 
-int MSR_Writer::set_calibrationdata(sampletype type, uint16_t point_1_target, uint16_t point_1_actual,
+int MSR_Writer::set_calibrationdata(calibration_type::calibration_type type, uint16_t point_1_target, uint16_t point_1_actual,
     uint16_t point_2_target, uint16_t point_2_actual)
 {
-    uint8_t getpoint1[] = {0x89, 0x0C, (uint8_t)type, (uint8_t)(point_1_target & 0xFF), (uint8_t)(point_1_target >> 8),
+    //std::cout << "S" << int(type) << " " << point_1_target << " " << point_1_actual << " "  << point_2_target << " "  << point_2_actual << std::endl;
+    uint8_t setpoint1[] = {0x89, 0x0C, (uint8_t)type, (uint8_t)(point_1_target & 0xFF), (uint8_t)(point_1_target >> 8),
         (uint8_t)(point_1_actual & 0xFF), (uint8_t)(point_1_actual >> 8)};
-    uint8_t getpoint2[] = {0x89, 0x0D, (uint8_t)type, (uint8_t)(point_2_target & 0xFF), (uint8_t)(point_2_target >> 8),
+    uint8_t setpoint2[] = {0x89, 0x0D, (uint8_t)type, (uint8_t)(point_2_target & 0xFF), (uint8_t)(point_2_target >> 8),
         (uint8_t)(point_2_actual & 0xFF), (uint8_t)(point_2_actual >> 8)};
         int returnval = 0;
-    returnval |= this->send_command(getpoint1, sizeof(getpoint1), nullptr, 8);
-    returnval |= this->send_command(getpoint2, sizeof(getpoint2), nullptr, 8);
+    returnval |= this->send_command(setpoint1, sizeof(setpoint1), nullptr, 8);
+    returnval |= this->send_command(setpoint2, sizeof(setpoint2), nullptr, 8);
     return returnval;
 }

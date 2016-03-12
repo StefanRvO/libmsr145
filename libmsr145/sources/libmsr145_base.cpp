@@ -35,7 +35,7 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
         out = new uint8_t[out_length];
     }
     auto checksum = calc_chksum(command, command_length);
-        //for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
+    //    for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
         write(*(this->port), buffer(command, command_length));
         write(*(this->port), buffer(&checksum, sizeof(checksum)));
         size_t read_bytes = read(*(this->port), buffer(out, out_length), transfer_exactly(out_length));
@@ -171,4 +171,21 @@ bool MSR_Base::is_recording()
     bool recording_active = (response[1] & 0x03); //this byte defines if the device is currently recording
     delete[] response;
     return recording_active;
+}
+
+void MSR_Base::get_calibrationdata(calibration_type::calibration_type type, uint16_t *point_1_target, uint16_t *point_1_actual,
+    uint16_t *point_2_target, uint16_t *point_2_actual)
+{
+    uint8_t *response = new uint8_t[8];
+    uint8_t getpoint1[] = {0x88, 0x0C, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
+    uint8_t getpoint2[] = {0x88, 0x0D, (uint8_t)type, 0x00, 0x00, 0x00, 0x00};
+    this->send_command(getpoint1, sizeof(getpoint1), response, 8);
+    *point_1_target = (response[4] << 8) + response[3];
+    *point_1_actual = (response[6] << 8) + response[5];
+    this->send_command(getpoint2, sizeof(getpoint2), response, 8);
+    *point_2_target = (response[4] << 8) + response[3];
+    *point_2_actual = (response[6] << 8) + response[5];
+    //printf("G%d\t%d\t%d\t%d\t%d\n", type, *point_1_target, *point_1_actual, *point_2_target, *point_2_actual);
+
+    delete[] response;
 }

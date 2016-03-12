@@ -49,6 +49,23 @@ int main()
         }
     */
     //msr.start_recording( startcondition::now, nullptr, nullptr, false);
+    //msr.set_time();
+
+    uint16_t point_1_target = 500, point_1_actual = 600, point_2_target = 700, point_2_actual = 800;
+    uint16_t point_1_target_read, point_1_actual_read, point_2_target_read, point_2_actual_read;
+
+    for(int i = 0;  i <= 0xFF; i++)
+    {
+        printf("%d\n", i);
+        msr.set_calibrationdata(calibration_type::calibration_type(i), point_1_target, point_1_actual,
+                        point_2_target, point_2_actual);
+        msr.get_calibrationdata(calibration_type::calibration_type(0x05), &point_1_target_read, &point_1_actual_read, &point_2_target_read, &point_2_actual_read);
+        printf("%d\t%d\t%d\t%d\t%d\n", 0x05, point_1_target_read, point_1_actual_read, point_2_target_read, point_2_actual_read);
+        msr.get_calibrationdata(calibration_type::calibration_type(0x07), &point_1_target_read, &point_1_actual_read, &point_2_target_read, &point_2_actual_read);
+        printf("%d\t%d\t%d\t%d\t%d\n", 0x07, point_1_target_read, point_1_actual_read, point_2_target_read, point_2_actual_read);
+
+    }
+
 
 
 

@@ -1,7 +1,7 @@
 #
 # Test CMake version
 #
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
 # The name of the project. (EDIT THIS)
 PROJECT(libmsr145)
@@ -13,7 +13,6 @@ SET(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 # Set executable output dir to build  dir
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-#Wanted to add more error flags, but Image.cpp throw warnings with -pedantic and -Wunused-variable
 SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS}	\
 			-std=c++14 		\
 		 	-Wall 			\

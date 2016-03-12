@@ -48,5 +48,9 @@ class MSRTool : public MSRDevice
         virtual uint16_t convert_from_unit(sampletype type, uint16_t value);
         virtual void set_calibrationpoints(active_calibrations::active_calibrations type, std::vector<float> points);
         virtual std::string get_firmware_version_str();
+        using MSRDevice::set_time;
+        virtual void set_time(std::string timestr);
+        virtual void set_limit(sampletype type, float limit1, float limit2, limit_setting record_limit, limit_setting alarm_limit);
+        using MSRDevice::set_limit;
     private:
 };
