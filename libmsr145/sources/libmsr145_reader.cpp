@@ -9,6 +9,7 @@
 
 #include "libmsr145.hpp"
 #include <string>
+#include <iostream>
 
 std::string MSR_Reader::get_serial()
 {
@@ -531,6 +532,8 @@ void MSR_Reader::get_sample_lim_setting(sampletype type, uint8_t *rec_settings, 
     *alarm_settings = response[1] & (0x07 << 3);
     *limit1 = (response[4] << 8) + response[3];
     *limit2 = (response[6] << 8) + response[5];
+    //std::cout << *limit1 << std::endl;
+    //std::cout << *limit2 << std::endl;
 }
 
 struct tm MSR_Reader::get_start_time()
@@ -557,7 +560,6 @@ void MSR_Reader::get_marker_setting(bool *marker_on, bool *alarm_confirm_on)
     *alarm_confirm_on = response[3];
     delete[] response;
 }
-
 
 
 void MSR_Reader::get_firmware_version(int *major, int *minor)

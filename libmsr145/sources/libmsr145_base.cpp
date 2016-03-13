@@ -42,7 +42,6 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
         assert(read_bytes == out_length);
         assert(out_length == 0 || (out[out_length - 1] == calc_chksum(out, out_length - 1)));
         //for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
-        //std::this_thread::sleep_for(std::chrono::milliseconds(20)); //We need to sleep a bit after changeing baud, else we will stall
     if(out_length && (out[0] & 0x20) ) returncode = 1; // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
     return returncode;

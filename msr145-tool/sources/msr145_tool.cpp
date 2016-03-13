@@ -363,13 +363,16 @@ std::string MSRTool::get_limits_str()
 
 std::string MSRTool::get_sample_limit_str(sampletype type)
 {
+    std::string type_str;
+    std::string unit_str;
+    get_type_str(type, type_str, unit_str);
     std::stringstream ret_str;
-    ret_str << "\tLimits for ";
+    ret_str << "\tLimits for " << type_str << std::endl;
     uint8_t rec_settings, alarm_settings;
     uint16_t limit1, limit2;
     get_sample_lim_setting(type, &rec_settings, &alarm_settings, &limit1, &limit2);
-    ret_str << "L1=" << convert_to_unit(type, limit1) << ", L2="
-        << convert_to_unit(type, limit2) << std::endl;
+    ret_str << "\t\tL1 = " << convert_to_unit(type, limit1) << " " << unit_str << ", L2 = "
+        << convert_to_unit(type, limit2) << " " << unit_str << std::endl;
     switch(rec_settings)
     {
         case rec_less_limit2:
@@ -391,6 +394,7 @@ std::string MSRTool::get_sample_limit_str(sampletype type)
             ret_str << "\t\tRecord Limit: Start: S<L1, Stop: S>L2" << std::endl;
             break;
     }
+
     switch(alarm_settings)
     {
         case alarm_less_limit1:
