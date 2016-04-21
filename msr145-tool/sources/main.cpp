@@ -59,6 +59,10 @@ int handle_args(int argc, char const **argv,
     {
         msr.print_status();
     }
+    if(vm.count("getsensors"))
+    {
+        msr.print_sensors();
+    }
     if(vm.count("stop"))
     {
         msr.stop_recording();
@@ -72,7 +76,7 @@ int handle_args(int argc, char const **argv,
         if(cmd_vec.size())
         {
             size_t len = std::stoul(vec.back(), nullptr, 10);
-            std::cout << len << std::endl;
+            //std::cout << len << std::endl;
             uint8_t *response = new uint8_t[len];
             msr.send_command(cmd_vec.data(), cmd_vec.size() - 1, response, len);
             for(size_t i = 0; i < len; i++)
@@ -354,6 +358,7 @@ int main(int argc, char const **argv) {
             ("limit1", po::value<float>(), "sets L1 for the given type, 0 is default")
             ("limit2", po::value<float>(), "sets L2 for the given type, 0 is default")
             ("clearlimits", "clear all limits")
+            ("getsensors", "get the newest reading from all the sensors.")
 
             ;
         po::positional_options_description p;

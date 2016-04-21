@@ -30,6 +30,20 @@ bool sample_cmp(sample &s1, sample &s2)
 }
 
 
+void MSRTool::print_sensors()
+{
+    update_sensors();
+    std::vector<sampletype> sensor_to_poll;
+    sensor_to_poll.push_back(sampletype::pressure);
+    sensor_to_poll.push_back(sampletype::T_pressure);
+    sensor_to_poll.push_back(sampletype::humidity);
+    sensor_to_poll.push_back(sampletype::T_humidity);
+    sensor_to_poll.push_back(sampletype::bat);
+    auto sensor_readings = get_sensor_data(sensor_to_poll);
+    for(uint8_t i = 0; i < sensor_readings.size(); i++)
+        std::cout << get_sensor_str(sensor_to_poll[i], sensor_readings[i]);
+
+}
 void MSRTool::print_status()
 {
     update_sensors();

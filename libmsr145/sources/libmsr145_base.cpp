@@ -35,13 +35,13 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
         out = new uint8_t[out_length];
     }
     auto checksum = calc_chksum(command, command_length);
-    //    for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
+        for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
         write(*(this->port), buffer(command, command_length));
         write(*(this->port), buffer(&checksum, sizeof(checksum)));
         size_t read_bytes = read(*(this->port), buffer(out, out_length), transfer_exactly(out_length));
         assert(read_bytes == out_length);
         assert(out_length == 0 || (out[out_length - 1] == calc_chksum(out, out_length - 1)));
-        //for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
+        for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
     if(out_length && (out[0] & 0x20) ) returncode = 1; // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
     if(selfalloced) delete[] out;
     return returncode;
@@ -122,7 +122,7 @@ void MSR_Base::update_sensors()
     //0x8B 0x00 0x00 <address lsb> <address msb> <length lsb> <length msb>
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
     this->send_command(command, sizeof(command), nullptr, 8);
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void MSR_Base::format_memory()

@@ -58,7 +58,12 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
 {
     rec_entry entry;
     entry.address = start_addr;
-    entry.length = end_addr - start_addr + 1;
+    if(end_addr < start_addr)
+    {
+        entry.length = end_addr + 0x2000 - start_addr + 1;
+    }
+    else
+        entry.length = end_addr - start_addr + 1;
     //the timestamp of the entry is given in seconds since jan 1 2000
     //they are saved in the folowing parts of the response, ordered with msb first, lsb last
     //byte 3, byte 7, byte 6, byte 5(first 7 bits)
@@ -81,7 +86,7 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
 
 std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
 {
-    std::vector<rec_entry> rec_addresses;
+    std::vector<rec_entry> rec_adresses;
     uint8_t first_placement_get[] = {0x82, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
@@ -90,9 +95,13 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
     uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
     uint16_t start_address = end_address;
+    //this command fetches the data at the adress given by byte 4 and 5
+    uint16_t first_record_adress; //the adress for the page of the first recording. Checked to make sure we don't loop around.
     uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00};
 
     bool recording_active = (response[1] & 0x03); //this byte defines if the device is currently recording
+    //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
+
     response_size = 10;
     delete[] response;
     response = new uint8_t[10];
@@ -116,7 +125,8 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
         if(++end_address == 0x2000)
             end_address = 0x0000;
         rec_entry first_entry = create_rec_entry(response, start_address, end_address, true);
-        rec_addresses.push_back(first_entry);
+        first_record_adress = first_entry.address;
+        rec_adresses.push_back(first_entry);
         start_address--;
         if(start_address == 0xFFFF)
         { //if adress underflows, it should underflow to 0x1FFF, which is the highest mem location on the MSR145
@@ -125,12 +135,10 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
         cur_address = start_address;
         end_address = start_address;
     }
-    //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
     rec_entry new_entry;
-    //this command fetches the data at the adress given by byte 4 and 5
     next_placement_get[3] = cur_address & 0xFF;
     next_placement_get[4] = cur_address >> 8;
-    while(cur_address != 0x1FFF && (rec_addresses.size() < max_num || max_num == 0))
+    while(cur_address != 0x1FFF && (rec_adresses.size() < max_num || max_num == 0))
     {
         this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
         //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
@@ -139,13 +147,37 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
         switch(response[1])
         {
             case 0x01: //this means that what we requested was not the first page of the entry
-                start_address = (response[8] <<  8) + response[7]; //these bytes hold the adress of the first page in the entry
-                cur_address = start_address;
-                break;
-            case 0x21: //this means that what we requested was the first page of the entry
+
+            case 0x41: //This mean the following:
+                       //1. The requested page was not the first one in the entry.
+                       //2. The requested page is part of a recording which has "looped around", so the start adress will be larger than the end adress.
+                       //As we should not be requesting any pages in the middle of a recording,
+                       //Save the requested address as end adress, and fetch the start adress from the response, also, request the start address to get timestamp.
+
+                start_address = (response[8] <<  8) + response[7];
+                end_address = cur_address;
+                next_placement_get[3] = start_address & 0xFF;
+                next_placement_get[4] = start_address >> 8;
+                this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
+                if(response[1] == 0x41)
+                {   //fix some wierd quirk which sometimes happens.
+                    next_placement_get[3] = cur_address & 0xFF;
+                    next_placement_get[4] = cur_address >> 8;
+                    this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
+
+                    start_address = cur_address;
+                }
+                //don't break here.
+            case 0x21:  //this means that what we requested was the first page of the entry
                 //save the entry
                 new_entry = create_rec_entry(response, start_address, end_address, false);
-                rec_addresses.push_back(new_entry);
+                if(rec_adresses.size() == 0) first_record_adress = new_entry.address;
+                else if(new_entry.address == first_record_adress)
+                {
+                    delete[] response;
+                    return rec_adresses;
+                }
+                rec_adresses.push_back(new_entry);
                 //the next entrys end adress will be this ones start minus 1
                 end_address = start_address - 1;
                 if(end_address == 0xFFFF)
@@ -156,9 +188,10 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
                 cur_address = end_address; //request next entrys end adress next
                 break;
             case 0xFF:
-                return rec_addresses;
+                delete[] response;
+                return rec_adresses;
             default:
-                printf("ERROR!!!!!\n"); //this should never happend
+                printf("ERROR!!!!!%d\n",response[1]); //this should never happend
                 break;
         }
 
@@ -166,7 +199,7 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
         next_placement_get[4] = cur_address >> 8;
     }
     delete[] response;
-    return rec_addresses;
+    return rec_adresses;
 }
 
 
@@ -310,6 +343,7 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
     }
     return samples;
 }
+
 sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
 {   //convert the 4 bytes pointed to by sample_ptr into the sample struct
     //the last 3 bytes are the sample data. however, not all types use all the bytes
