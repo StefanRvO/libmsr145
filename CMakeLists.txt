@@ -26,6 +26,7 @@ SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS}	\
 			-Wno-unused-variable 	\
 			-pedantic		\
 			-Wunused-variable	\
+			-g			\
 " )
 
 add_subdirectory("libmsr145")

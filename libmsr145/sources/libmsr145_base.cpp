@@ -13,7 +13,11 @@
 #include <cstdio>
 #include <chrono>
 #include <thread> //sleep_for
+#include <boost/optional.hpp>
+#include <boost/system/error_code.hpp>
 using namespace boost::asio;
+using namespace boost::posix_time;
+
 
 //sends the given command to the MSR145 and read out_length number of bytes from it into out
 uint8_t MSR_Base::calc_chksum(uint8_t *data, size_t length)
@@ -23,6 +27,48 @@ uint8_t MSR_Base::calc_chksum(uint8_t *data, size_t length)
     crc.process_bytes(data, length);
     return crc.checksum();
 }
+
+int MSR_Base::send_with_timeout(uint8_t *command, size_t command_length,
+                            __attribute__((unused)) uint8_t *out, __attribute__((unused)) size_t out_length, time_duration time_out)
+{
+    //zero out output.
+    memset(out, 0, out_length);
+    auto checksum = calc_chksum(command, command_length);
+    write(*(this->port), buffer(command, command_length));
+    write(*(this->port), buffer(&checksum, sizeof(checksum)));
+    boost::optional<boost::system::error_code> timer_result;
+    boost::asio::deadline_timer timer(this->port->get_io_service());
+    timer.expires_from_now(time_out);
+    timer.async_wait([&timer_result] (const boost::system::error_code& error) { timer_result.reset(error); });
+
+    boost::optional<boost::system::error_code> read_result;
+    boost::asio::async_read(*(this->port), buffer(out, out_length), transfer_exactly(out_length), [&read_result] (const boost::system::error_code& error, size_t) { read_result.reset(error); });
+
+    this->port->get_io_service().reset();
+    bool success = false;
+    while (this->port->get_io_service().run_one())
+    {
+        if (read_result)
+        {
+            timer.cancel();
+            success = true;
+        }
+        else if (timer_result)
+        {
+            this->port->cancel();
+            success = false;
+        }
+    }
+    if(success == false)
+        return 1;
+    else if(out_length == 0) return 0;
+    for(size_t i = 0; i < out_length; i++)
+    {
+        if(out[i] != 0) return 0;
+    }
+    return 1;
+}
+
 int MSR_Base::send_command(uint8_t *command, size_t command_length,
                             uint8_t *out, size_t out_length)
     //Returns 0 on success
@@ -34,15 +80,15 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
         selfalloced = true;
         out = new uint8_t[out_length];
     }
-    auto checksum = calc_chksum(command, command_length);
-        for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
-        write(*(this->port), buffer(command, command_length));
-        write(*(this->port), buffer(&checksum, sizeof(checksum)));
-        size_t read_bytes = read(*(this->port), buffer(out, out_length), transfer_exactly(out_length));
-        assert(read_bytes == out_length);
-        assert(out_length == 0 || (out[out_length - 1] == calc_chksum(out, out_length - 1)));
-        for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
-    if(out_length && (out[0] & 0x20) ) returncode = 1; // if response have 0x20 set, it means error (normaly because it didn't have time to respond).
+    //printf("SEND: ");    for(size_t i = 0; i < command_length; i++) printf("%02X ", command[i]); printf("\n");
+    int error;
+    do {
+        error = send_with_timeout(command, command_length, out, out_length, time_duration(0,0,1,0));
+    } while(error != 0);
+
+    //printf("RECIEVE: ");    for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
+    if(out_length && (out[0] & 0x20) ) returncode = 1; // if response hav   e 0x20 set, it means error (normaly because it didn't have time to respond).
+    if(out_length && (out[0] == 0x00) ) assert(false); //this should not happen.
     if(selfalloced) delete[] out;
     return returncode;
 }
@@ -73,6 +119,8 @@ MSR_Base::MSR_Base(std::string _portname)
     this->port->set_option(serial_port_base::stop_bits( MSR_STOP_BITS ));
     this->port->set_option(serial_port_base::character_size( MSR_WORD_length ));
     this->port->set_option(serial_port::flow_control(serial_port::flow_control::none));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(20)); //We need to sleep a bit.
+
 }
 
 MSR_Base::~MSR_Base()
@@ -113,6 +161,7 @@ void MSR_Base::set_baud(uint32_t baudrate)
     uint8_t command[] = {0x85, 0x01, baudbyte, 0x00, 0x00, 0x00, 0x00};
     this->send_command(command, sizeof(command), nullptr, 0);
     std::this_thread::sleep_for(std::chrono::milliseconds(20)); //We need to sleep a bit after changeing baud, else we will stall
+
     this->port->set_option(serial_port_base::baud_rate( baudrate ));
 }
 

@@ -64,13 +64,7 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     }
     else
         entry.length = end_addr - start_addr + 1;
-    //the timestamp of the entry is given in seconds since jan 1 2000
-    //they are saved in the folowing parts of the response, ordered with msb first, lsb last
-    //byte 3, byte 7, byte 6, byte 5(first 7 bits)
-    int32_t entry_time_seconds = ((int32_t)response_ptr[2]) << 23;
-    entry_time_seconds += ((int32_t)response_ptr[6]) << 15;
-    entry_time_seconds += ((int32_t)response_ptr[5]) << 7;
-    entry_time_seconds += ((int32_t)response_ptr[4]) >> 1;
+    auto entry_time_seconds = get_page_timestamp(response_ptr);
     //setup the tm struct
     entry.time.tm_year = 100; //the msr count from 2000, not 1900
     entry.time.tm_mon = 0;
@@ -232,13 +226,14 @@ void MSR_Reader::add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uin
 
 uint64_t MSR_Reader::get_page_timestamp(__attribute__((unused))uint8_t *response)
 {
-    uint64_t entry_time_seconds = 0;
-    for(uint8_t i = 7; i > 1; i--)
-    {
-        entry_time_seconds += response[i];
-        if(i == 2) break;
-        entry_time_seconds <<= 8;
-    }
+    //the timestamp of the entry is given in seconds since jan 1 2000
+    //they are saved in the folowing parts of the response, ordered with msb first, lsb last
+    //byte 3, byte 7, byte 6, byte 5(first 7 bits)
+    int32_t entry_time_seconds = ((int32_t)response[2]) << 23;
+    entry_time_seconds += ((int32_t)response[6]) << 15;
+    entry_time_seconds += ((int32_t)response[5]) << 7;
+    entry_time_seconds += ((int32_t)response[4]) >> 1;
+
     return entry_time_seconds;
 }
 
@@ -258,7 +253,7 @@ std::vector<std::pair<std::vector<uint8_t>, uint64_t> > MSR_Reader::get_raw_reco
     for(uint16_t i = 0; (i < record.length || record.isRecording) && !end; i++)
     {
         //send the fetch command
-        uint16_t cur_addr = record.address + i;
+        uint16_t cur_addr = (record.address + i) % 0x2000;
         fetch_command[3] = cur_addr & 0xFF;
         fetch_command[4] = cur_addr >> 8;
         this->send_command(fetch_command, sizeof(fetch_command), response, response_size);
@@ -326,13 +321,14 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
     auto pages = this->get_raw_recording(record);
     uint64_t timestamp = 0; //time since start of record in 1/131072 seconds
     //run through the raw data and convert it to samples
-    uint64_t start_time = pages[0].second;
+    uint64_t start_time = pages[0].second << 9;
     for( auto &page : pages)
     {
         auto &rawdata = page.first;
         //printf("%f\n", timestamp / (512. * (1 << 8)));
-        timestamp = page.second - start_time; // adjust timestamp to the one given at page start
+        timestamp = ((page.second << 9) - start_time); // adjust timestamp to the one given at page start
         //printf("%f\n\n", timestamp / (512. * (1 << 8)));
+        //printf("NEW page. timestamp: %lu, starttime: %lu, number: %d\n", page.second, start_time, pagenum++);
         for(size_t i = 0; i < rawdata.size(); i += 4)
         {
             auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
@@ -379,9 +375,9 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
             //it's a flag. If set, the time is in seconds, else it's in 1/512 seconds.
             //The last 11 bits is a signed int.
             if(time_bits & 0x0800)
-                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (1 << 17);
+                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (1 << 9);
             else
-                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 ) * (1 << 8);
+                *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 );
             break;
         }
         case sampletype::timestamp:
@@ -394,13 +390,14 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
             break;
         }
         default:
-            printf("Unknown type: %02X\n", this_sample.type);
+            //printf("Unknown type: %02X\t raw: %08X, time: %lu\n", this_sample.type, this_sample.rawsample, *total_time);
             this_sample.value = (sample_ptr[3] << 8) + sample_ptr[2];
             break;
         case end:
             break;
     }
     this_sample.timestamp = *total_time;
+    //printf("Time1: %lu\tTime2: %lu\tRaw:%08X\n", this_sample.timestamp, *total_time, this_sample.rawsample );
 
     return this_sample;
 }

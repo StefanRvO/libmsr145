@@ -210,6 +210,8 @@ void MSRTool::extract_record(uint32_t rec_num, std::string seperator, std::ostre
 std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seperator)
 {
     std::stringstream csv;
+    csv.setf(std::ios::fixed, std::ios::floatfield);
+    csv.precision(10);
     std::vector<sampletype> sampletypes;
     //Create header with info about types and units
     for(auto &sample : samples)
@@ -223,9 +225,20 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
     csv << "Timestamp (s)" << seperator;
     for(auto &type : sampletypes)
     {
-        std::string type_str, unit_str;
-        get_type_str(type, type_str, unit_str);
-        csv << type_str << " (" << unit_str << ")" << seperator;
+        switch(type)
+        {
+            case pressure: case T_pressure: case humidity:
+            case T_humidity: case bat: case ext1: case ext2:
+            case ext3: case ext4:
+            {
+                std::string type_str, unit_str;
+                get_type_str(type, type_str, unit_str);
+                csv << type_str << " (" << unit_str << ")" << seperator;
+                break;
+            }
+            default:
+                break;
+        }
     }
     csv << std::endl;
     //Create the sample lines
@@ -236,24 +249,35 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
     size_t placement = 0;
     for(auto &sample : samples)
     {
-        //if(sample.timestamp == 5457) printf("%08X\n", sample.rawsample);
-        if(sample.timestamp != last_stamp)
+        switch(sample.type)
         {
-            placement = 0;
-            last_stamp = sample.timestamp;
+            case pressure: case T_pressure: case humidity:
+            case T_humidity: case bat: case ext1: case ext2:
+            case ext3: case ext4:
+
+                //if(sample.timestamp == 5457) printf("%08X\n", sample.rawsample);
+                if(sample.timestamp != last_stamp)
+                {
+                    placement = 0;
+                    last_stamp = sample.timestamp;
+                }
+                if(placement == 0)
+                {
+                    csv << std::endl;
+                    csv << sample.timestamp / double( (1 << 9) )  << seperator;
+                    //std::cout << sample.timestamp << std::endl;
+                    placement++;
+                }
+                while(sample.type != sampletypes[placement - 1])
+                {
+                    placement++;
+                    csv << seperator;
+                }
+                csv << convert_to_unit(sample.type, sample.value);
+                break;
+            default:
+                break;
         }
-        if(placement == 0)
-        {
-            csv << std::endl;
-            csv << sample.timestamp / double((1 << 17))  << seperator;
-            placement++;
-        }
-        while(sample.type != sampletypes[placement - 1])
-        {
-            placement++;
-            csv << seperator;
-        }
-        csv << convert_to_unit(sample.type, sample.value);
     }
     return csv.str();
 }
@@ -287,7 +311,8 @@ void MSRTool::get_type_str(sampletype type, std::string &type_str, std::string &
             unit_str = "C";
             break;
         default:
-            assert(false); //this should not happen
+            //assert(false); //this should not happen
+            break;
     }
 }
 
@@ -500,6 +525,7 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
             return value;
 
         default:
+            //return 0;
             assert(false); //this should not happen
     }
 }

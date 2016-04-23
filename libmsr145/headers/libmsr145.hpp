@@ -37,11 +37,13 @@ class MSR_Base
         virtual void stop_recording();
         virtual bool is_recording();
         virtual void get_calibrationdata(calibration_type::calibration_type type, uint16_t *point_1_target, uint16_t *point_1_actual,
-            uint16_t *point_2_target, uint16_t *point_2_actual); //unfortunately, we need to place this here, as it's needed in the writer 
+            uint16_t *point_2_target, uint16_t *point_2_actual); //unfortunately, we need to place this here, as it's needed in the writer
     public: //protected:
         virtual int send_command(uint8_t *command, size_t command_length, uint8_t *out, size_t out_length);
         virtual void send_raw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual uint8_t calc_chksum(uint8_t *data, size_t length);
+        virtual int send_with_timeout(uint8_t *command, size_t command_length,
+                                    uint8_t *out, size_t out_length, boost::posix_time::time_duration time_out);
 
 
 };
