@@ -171,7 +171,7 @@ void MSR_Base::update_sensors()
     //0x8B 0x00 0x00 <address lsb> <address msb> <length lsb> <length msb>
     uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
     this->send_command(command, sizeof(command), nullptr, 8);
-    //std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 void MSR_Base::format_memory()

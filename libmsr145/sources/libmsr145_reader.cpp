@@ -64,7 +64,11 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     }
     else
         entry.length = end_addr - start_addr + 1;
-    auto entry_time_seconds = get_page_timestamp(response_ptr);
+
+    //printf("0x");
+    //for(int i=2; i <7; i++) printf("%02X", response_ptr[i]);
+    //printf("\n");
+    auto entry_time_seconds = get_page_timestamp(response_ptr) >> 9;
     //setup the tm struct
     entry.time.tm_year = 100; //the msr count from 2000, not 1900
     entry.time.tm_mon = 0;
@@ -141,7 +145,6 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
         switch(response[1])
         {
             case 0x01: //this means that what we requested was not the first page of the entry
-
             case 0x41: //This mean the following:
                        //1. The requested page was not the first one in the entry.
                        //2. The requested page is part of a recording which has "looped around", so the start adress will be larger than the end adress.
@@ -229,10 +232,11 @@ uint64_t MSR_Reader::get_page_timestamp(__attribute__((unused))uint8_t *response
     //the timestamp of the entry is given in seconds since jan 1 2000
     //they are saved in the folowing parts of the response, ordered with msb first, lsb last
     //byte 3, byte 7, byte 6, byte 5(first 7 bits)
-    int32_t entry_time_seconds = ((int32_t)response[2]) << 23;
-    entry_time_seconds += ((int32_t)response[6]) << 15;
-    entry_time_seconds += ((int32_t)response[5]) << 7;
-    entry_time_seconds += ((int32_t)response[4]) >> 1;
+    uint64_t entry_time_seconds = ((uint64_t)response[2]) << 32;
+    entry_time_seconds += ((uint64_t)response[6]) << 24;
+    entry_time_seconds += ((uint64_t)response[5]) << 16;
+    entry_time_seconds += ((uint64_t)response[4]) << 8;
+    entry_time_seconds += ((uint64_t)response[3]);
 
     return entry_time_seconds;
 }
@@ -321,12 +325,12 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
     auto pages = this->get_raw_recording(record);
     uint64_t timestamp = 0; //time since start of record in 1/131072 seconds
     //run through the raw data and convert it to samples
-    uint64_t start_time = pages[0].second << 9;
+    uint64_t start_time = (pages[0].second >> 9) << 9;
     for( auto &page : pages)
     {
         auto &rawdata = page.first;
         //printf("%f\n", timestamp / (512. * (1 << 8)));
-        timestamp = ((page.second << 9) - start_time); // adjust timestamp to the one given at page start
+        timestamp = ((page.second) - start_time); // adjust timestamp to the one given at page start
         //printf("%f\n\n", timestamp / (512. * (1 << 8)));
         //printf("NEW page. timestamp: %lu, starttime: %lu, number: %d\n", page.second, start_time, pagenum++);
         for(size_t i = 0; i < rawdata.size(); i += 4)
@@ -424,7 +428,6 @@ std::vector<uint16_t> MSR_Reader::get_sensor_data(std::vector<sampletype> &types
 
 std::string MSR_Reader::get_name()
 {
-    //first, collect the first 6 chars of the namespace
     std::string name;
     size_t response_size = 8;
     uint8_t command_first[] = {0x83, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00};
