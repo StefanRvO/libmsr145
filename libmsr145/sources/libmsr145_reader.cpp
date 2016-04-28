@@ -271,8 +271,8 @@ std::vector<std::pair<std::vector<uint8_t>, uint64_t> > MSR_Reader::get_raw_reco
         {
             start_pos = 9 + 2 + 6;
         }
-        for(int k = 8; k < 16; k++) printf("%02X", response[k]);
-        printf("\n");
+        //for(int k = 8; k < 16; k++) printf("%02X", response[k]);
+        //printf("\n");
         add_raw_samples(sample_pages, end, response, response_size, start_pos, record.isRecording, i, cur_addr);
     }
     this->set_baud(9600);

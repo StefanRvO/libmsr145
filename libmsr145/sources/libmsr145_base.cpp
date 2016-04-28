@@ -167,11 +167,12 @@ void MSR_Base::set_baud(uint32_t baudrate)
 
 void MSR_Base::update_sensors()
 {
-    //the fetch command. Format is:
-    //0x8B 0x00 0x00 <address lsb> <address msb> <length lsb> <length msb>
-    uint8_t command[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
-    this->send_command(command, sizeof(command), nullptr, 8);
-    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+
+    uint8_t command1[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
+    this->send_command(command1, sizeof(command1), nullptr, 8);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 void MSR_Base::format_memory()

@@ -170,6 +170,8 @@ void handlelimits(po::variables_map &vm, MSRTool &msr)
         limittype = T_humidity;
     else if(limittype_str == "T_p" or limittype_str == "temp_pressure")
         limittype = T_pressure;
+    else if(limittype_str == "L" or limittype_str == "light")
+        limittype = light;
     else
     {
         throw po::error("limittype invalid!");
@@ -238,13 +240,18 @@ int handle_extract_args(po::variables_map &vm, MSRTool &msr)
 
 int handle_start_args(po::variables_map &vm, MSRTool &msr)
 {
-    if(vm.count("pressure") || vm.count("humidity") || vm.count("battery") || vm.count("blink"))
+    if(vm.count("pressure") || vm.count("humidity") || vm.count("battery") || vm.count("blink") || vm.count("light"))
     {   //recording options
         std::vector<measure_interval_pair> interval_typelist;
         if(vm.count("pressure"))
         {
             auto ist = vm["pressure"].as<std::vector<float> >();
             add_to_intervallist(ist, active_measurement::pressure, interval_typelist);
+        }
+        if(vm.count("light"))
+        {
+            auto ist = vm["light"].as<std::vector<float> >();
+            add_to_intervallist(ist, active_measurement::light, interval_typelist);
         }
         if(vm.count("humidity"))
         {
@@ -341,6 +348,7 @@ int main(int argc, char const **argv) {
             ("seperator", po::value<std::string>(), "The seperator used when extracting")
             ("outfile,o", po::value<std::string>(), "The file extracted to, default is stdout")
             ("pressure",  po::value<std::vector<float> >()->multitoken(), "Record pressure. Arguments are intervals (--start required)")
+            ("light",  po::value<std::vector<float> >()->multitoken(), "Record light level. Arguments are intervals (--start required)")
             ("humidity",  po::value<std::vector<float> >()->multitoken(), "Record humidity. Arguments are intervals(--start required)")
             ("battery",  po::value<std::vector<float> >()->multitoken(), "Record battery. Arguments are intervals(--start required)")
             ("blink",  po::value<std::vector<float> >()->multitoken(), "Blink blue led. Arguments are intervals(--start required)")
@@ -352,7 +360,7 @@ int main(int argc, char const **argv) {
             ("calib_temp_T", po::value<std::vector<float> >()->multitoken(), "set calibration settings for temperature (T sensor) (somewhat buggy)")
             ("settime", po::value<std::string>()->implicit_value(""), "Set the device time. If no argument is given, the time is set to current time.")
             ("setlimit", "Set a limit setting. Requires additional arguments for setting the actual limit")
-            ("limittype", po::value<std::string>(), "Which type of limit to set. Could be '(p)pressure', '(T_p)temp_pressure', '(RH)humidity' (humidity limits may be buggy) or (T_RH)temp_humidity")
+            ("limittype", po::value<std::string>(), "Which type of limit to set. Could be '(L)light, (p)pressure', '(T_p)temp_pressure', '(RH)humidity' (humidity limits may be buggy) or (T_RH)temp_humidity")
             ("alarmlimit", po::value<std::string>(), "Set an alarm limit, types are: 'none(default), 'S<L1', 'S>L1', 'L1<S<L2' and 'S<L1||S>L2'")
             ("recordlimit", po::value<std::string>(), "Set an record limit, types are: 'none(default), 'S<L2', 'S>L2', 'L1<S<L2', 'S<L1||S>L2', 'START>L1,STOP<L2' and START<L1,STOP>L2")
             ("limit1", po::value<float>(), "sets L1 for the given type, 0 is default")

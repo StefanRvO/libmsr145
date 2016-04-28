@@ -38,9 +38,9 @@ void MSRTool::print_sensors()
     sensor_to_poll.push_back(sampletype::humidity);
     sensor_to_poll.push_back(sampletype::T_humidity);
     sensor_to_poll.push_back(sampletype::bat);
-    auto sensor_readings = get_sensor_data(sensor_to_poll);
+    sensor_to_poll.push_back(sampletype::light);
     update_sensors();
-    sensor_readings = get_sensor_data(sensor_to_poll);
+    auto sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
         std::cout << get_sensor_str(sensor_to_poll[i], sensor_readings[i]);
 
@@ -67,6 +67,7 @@ void MSRTool::print_status()
     sensor_to_poll.push_back(sampletype::humidity);
     sensor_to_poll.push_back(sampletype::T_humidity);
     sensor_to_poll.push_back(sampletype::bat);
+    sensor_to_poll.push_back(sampletype::light);
     auto sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
         std::cout << get_sensor_str(sensor_to_poll[i], sensor_readings[i]);
@@ -392,7 +393,7 @@ std::string MSRTool::get_limits_str()
         {
             case sampletype::pressure: case sampletype::T_pressure:
             case sampletype::humidity: case sampletype::T_humidity:
-            case sampletype::bat:
+            case sampletype::bat: case sampletype::light:
                 ret_str << get_sample_limit_str((sampletype)i);
                 break;
             default:
@@ -601,6 +602,7 @@ std::string MSRTool::get_interval_string()
     std::vector<double> pressure_intervals;
     std::vector<double> T1_intervals;
     std::vector<double> battery_intervals;
+    std::vector<double> light_intervals;
     for(uint8_t i = 0; i < 8; i++)
     {
         auto interval = get_timer_interval(i) / 512.;
@@ -618,6 +620,8 @@ std::string MSRTool::get_interval_string()
             T1_intervals.push_back(interval);
         if(active_samples & active_measurement::bat)
             battery_intervals.push_back(interval);
+        if(active_samples & active_measurement::light)
+            light_intervals.push_back(interval);
     }
     if(blink_intervals.size())
     {
@@ -648,6 +652,13 @@ std::string MSRTool::get_interval_string()
         return_str << "\tBattery intervals (seconds):\t";
         for(auto &i : battery_intervals) return_str << i << "\t";
         return_str << std::endl;
+    }
+    if(light_intervals.size())
+    {
+        return_str << "\tLight intervals (seconds):\t";
+        for(auto &i : light_intervals) return_str << i << "\t";
+        return_str << std::endl;
+
     }
     if(return_str.str().size() == 0) return_str << "\tNone\n";
     return return_str.str();

@@ -27,6 +27,7 @@ namespace active_measurement
         humidity = 1 << 2,
         T1       = 1 << 3,
         bat      = 1 << 4,
+        light    = 1 << 5,
         blink    = 1 << 16,
     };
 }
