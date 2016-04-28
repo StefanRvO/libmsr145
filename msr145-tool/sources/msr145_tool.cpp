@@ -32,7 +32,6 @@ bool sample_cmp(sample &s1, sample &s2)
 
 void MSRTool::print_sensors()
 {
-    update_sensors();
     std::vector<sampletype> sensor_to_poll;
     sensor_to_poll.push_back(sampletype::pressure);
     sensor_to_poll.push_back(sampletype::T_pressure);
@@ -40,7 +39,8 @@ void MSRTool::print_sensors()
     sensor_to_poll.push_back(sampletype::T_humidity);
     sensor_to_poll.push_back(sampletype::bat);
     auto sensor_readings = get_sensor_data(sensor_to_poll);
-
+    update_sensors();
+    sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
         std::cout << get_sensor_str(sensor_to_poll[i], sensor_readings[i]);
 
@@ -230,7 +230,7 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
         {
             case pressure: case T_pressure: case humidity:
             case T_humidity: case bat: case ext1: case ext2:
-            case ext3: case ext4:
+            case ext3: case ext4: case light:
             {
                 std::string type_str, unit_str;
                 get_type_str(type, type_str, unit_str);
@@ -254,7 +254,7 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
         {
             case pressure: case T_pressure: case humidity:
             case T_humidity: case bat: case ext1: case ext2:
-            case ext3: case ext4:
+            case ext3: case ext4: case light:
 
                 //if(sample.timestamp == 5457) printf("%08X\n", sample.rawsample);
                 if(sample.timestamp != last_stamp)
@@ -306,6 +306,10 @@ void MSRTool::get_type_str(sampletype type, std::string &type_str, std::string &
         case bat:
             type_str = "Battery";
             unit_str = "V";
+            break;
+        case light:
+            type_str = "Light Sensor";
+            unit_str = "lux";
             break;
         case ext1: case ext2: case ext3: case ext4:
             type_str = "T";
@@ -522,6 +526,8 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
             //The factor is not really vertified to be "the correct one".
 
             return value/683.; //not figured out yet
+        case light:
+            return value * 6.5865478515625;
         case ext1: case ext2: case ext3: case ext4:
             return value;
 

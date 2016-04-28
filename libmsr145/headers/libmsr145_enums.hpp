@@ -63,6 +63,7 @@ enum sampletype
     T_pressure = 0x1,
     humidity = 0x5,
     T_humidity = 0x6,
+    light = 0x9,
     bat = 0xE,
     ext1 = 0xA,
     ext2 = 0xB,

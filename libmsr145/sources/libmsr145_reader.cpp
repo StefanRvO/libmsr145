@@ -265,12 +265,14 @@ std::vector<std::pair<std::vector<uint8_t>, uint64_t> > MSR_Reader::get_raw_reco
         if(i == 0)
         { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
-          start_pos = 0 +9 + 6 * 0xF + 2;
+          start_pos = 0 +9 + 2 + 6 * 0xF;
         }
         else
         {
-            start_pos = 17;
+            start_pos = 9 + 2 + 6;
         }
+        for(int k = 8; k < 16; k++) printf("%02X", response[k]);
+        printf("\n");
         add_raw_samples(sample_pages, end, response, response_size, start_pos, record.isRecording, i, cur_addr);
     }
     this->set_baud(9600);
@@ -358,6 +360,15 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
 
     switch(this_sample.type)
     {
+        case sampletype::timestamp:
+        {
+            //this is a special type, which is used when the timediff can't fit into the normal sample
+            //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
+            uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
+            timediff *= (1 << 16); //the unit of total_time is 1/512 seconds
+            *total_time += timediff;
+            break;
+        }
         case sampletype::T_pressure:
         case sampletype::pressure:
         case sampletype::T_humidity:
@@ -367,6 +378,7 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
         case sampletype::ext2:
         case sampletype::ext3:
         case sampletype::ext4:
+        case sampletype::light:
         {
             //capture the sample value
             this_sample.value = (sample_ptr[3] << 8) + sample_ptr[2];
@@ -384,18 +396,10 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
                 *total_time += ( (int16_t)((time_bits & 0x07FF) << 5) / 32 );
             break;
         }
-        case sampletype::timestamp:
-        {
-            //this is a special type, which is used when the timediff can't fit into the normal sample
-            //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
-            uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
-            timediff *= (1 << 16); //the unit of total_time is 1/512 seconds
-            *total_time += timediff;
-            break;
-        }
         default:
             //printf("Unknown type: %02X\t raw: %08X, time: %lu\n", this_sample.type, this_sample.rawsample, *total_time);
             this_sample.value = (sample_ptr[3] << 8) + sample_ptr[2];
+            printf("%02X\n", this_sample.type);
             break;
         case end:
             break;

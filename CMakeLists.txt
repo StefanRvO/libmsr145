@@ -32,5 +32,6 @@ SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS}	\
 add_subdirectory("libmsr145")
 add_subdirectory("msr145-test")
 add_subdirectory("msr145-tool")
+add_subdirectory("msr145-com")
 
 
