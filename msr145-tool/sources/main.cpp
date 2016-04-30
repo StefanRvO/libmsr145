@@ -63,6 +63,10 @@ int handle_args(int argc, char const **argv,
     {
         msr.print_sensors();
     }
+    if(vm.count("set_light_unit"))
+    {
+        msr.set_L1_unit(vm["set_light_unit"].as<std::string>());
+    }
     if(vm.count("stop"))
     {
         msr.stop_recording();
@@ -367,6 +371,7 @@ int main(int argc, char const **argv) {
             ("limit2", po::value<float>(), "sets L2 for the given type, 0 is default")
             ("clearlimits", "clear all limits")
             ("getsensors", "get the newest reading from all the sensors.")
+            ("set_light_unit", po::value<std::string>(), "Set the name of the unit for the light sensor")
 
             ;
         po::positional_options_description p;

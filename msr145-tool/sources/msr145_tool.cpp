@@ -506,8 +506,9 @@ std::string MSRTool::get_sensor_str(sampletype type, uint16_t value)
     return ret_str.str();
 }
 
-float MSRTool::convert_to_unit(sampletype type, uint16_t value)
+float MSRTool::convert_to_unit(sampletype type, uint16_t value, float conversion_factor)
 {
+    if(conversion_factor != 0) return value / conversion_factor;
     switch(type)
     {
         case pressure:
@@ -536,6 +537,7 @@ float MSRTool::convert_to_unit(sampletype type, uint16_t value)
             //return 0;
             assert(false); //this should not happen
     }
+    return 0.;
 }
 
 void MSRTool::set_calibrationpoints(active_calibrations::active_calibrations type, std::vector<float> points)

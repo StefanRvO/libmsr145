@@ -238,3 +238,30 @@ void MSR_Base::get_calibrationdata(calibration_type::calibration_type type, uint
 
     delete[] response;
 }
+std::string MSR_Base::get_L1_unit_str()
+{
+    uint8_t get[] = {0x88, 0x03, 0x09, 0x00, 0x00, 0x00, 0x00};
+    uint8_t *response = new uint8_t[8];
+    std::string ret_str;
+    this->send_command(get, sizeof(get), response, 8);
+    for(int i = 3; i <= 6; i++)
+        ret_str += response[i];
+    delete[] response;
+    return ret_str;
+}
+
+void MSR_Base::get_L1_offset_gain(float *offset, float *gain)
+{
+    //The gain and offset saved for L1 is a floating point numbers. It is a 24 bit floating point
+    //Number. We pad it with 00 to make it compatible.
+    uint8_t get_gain[] = {0x88, 0x04, 0x09, 0x00, 0x00, 0x00, 0x00};
+    uint8_t *response = new uint8_t[8];
+    this->send_command(get_gain, sizeof(get_gain), response, 8);
+    //save the gain and offset
+    //BEWARE THIS ONLY WORK ON LITTLE ENDIAN. NEEDS TO BE REVERSED FOR BIG ENDIAN!
+    uint8_t *gain_ptr = ((uint8_t *)gain);
+    uint8_t *offset_ptr =  ((uint8_t *)offset);
+    gain_ptr[0] = 0x00; gain_ptr[1] = response[4]; gain_ptr[2] = response[5]; gain_ptr[3] = response[6];
+    offset_ptr[0] = 0x00; offset_ptr[1] = response[1]; offset_ptr[2] = response[2]; offset_ptr[3] = response[3];
+    delete[] response;
+}

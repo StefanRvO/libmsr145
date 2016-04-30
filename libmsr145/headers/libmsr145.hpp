@@ -45,6 +45,8 @@ class MSR_Base
         virtual int send_with_timeout(uint8_t *command, size_t command_length,
                                     uint8_t *out, size_t out_length, boost::posix_time::time_duration time_out);
 
+        virtual std::string get_L1_unit_str();
+        virtual void get_L1_offset_gain(float *offset, float *gain);
 
 };
 
@@ -67,6 +69,8 @@ class MSR_Writer : virtual public MSR_Base
         virtual int set_calibrationdata(calibration_type::calibration_type type, uint16_t point_1_target, uint16_t point_1_actual,
             uint16_t point_2_target, uint16_t point_2_actual);
         virtual void insert_time_in_command(struct tm *timeset, uint8_t *command);
+        virtual int set_L1_unit(std::string unit);
+        virtual int set_L1_offset_gain(float offset, float gain);
 };
 
 class MSR_Reader : virtual public MSR_Base
@@ -98,7 +102,6 @@ class MSR_Reader : virtual public MSR_Base
         virtual uint64_t get_page_timestamp(uint8_t *response);
         virtual std::string get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *active_calib);
         virtual void get_firmware_version(int *major, int *minor);
-
     protected:
         virtual std::vector<std::pair<std::vector<uint8_t>, uint64_t> > get_raw_recording(rec_entry record);
         virtual sample convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time);

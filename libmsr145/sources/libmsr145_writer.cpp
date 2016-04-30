@@ -55,6 +55,9 @@ int MSR_Writer::set_names_and_calibration_date(std::string deviceName, std::stri
     {
         get_calibrationdata(calibration_type::calibration_type(calibpoints[i][0]), calibpoints[i] + 1, calibpoints[i] + 2, calibpoints[i] + 3, calibpoints[i] + 4);
     }
+    float L1_offset, L1_gain;
+    get_L1_offset_gain(&L1_offset, &L1_gain);
+    std::string L1_unit = get_L1_unit_str();
 
     while(deviceName.size() < 12)
         deviceName.push_back(' ');
@@ -81,6 +84,8 @@ int MSR_Writer::set_names_and_calibration_date(std::string deviceName, std::stri
     returnval |= this->send_command(command_7, sizeof(command_7), nullptr, 8);
 
     //set the read calibrations
+    set_L1_unit(L1_unit);
+    set_L1_offset_gain(L1_offset, L1_gain);
     for(int i = 0; i < 2; i++)
     {
         set_calibrationdata(calibration_type::calibration_type(calibpoints[i][0]), calibpoints[i][1], calibpoints[i][2], calibpoints[i][3], calibpoints[i][4]);
@@ -202,5 +207,24 @@ int MSR_Writer::set_calibrationdata(calibration_type::calibration_type type, uin
         int returnval = 0;
     returnval |= this->send_command(setpoint1, sizeof(setpoint1), nullptr, 8);
     returnval |= this->send_command(setpoint2, sizeof(setpoint2), nullptr, 8);
+    return returnval;
+}
+
+int MSR_Writer::set_L1_unit(std::string unit)
+{
+    while(unit.size() < 4) unit += " ";
+    uint8_t cmd[] = {0x89, 0x03, 0x09, (uint8_t)unit[0], (uint8_t)unit[1], (uint8_t)unit[2], (uint8_t)unit[3]};
+    return send_command(cmd, sizeof(cmd), nullptr, 8);
+}
+
+int MSR_Writer::set_L1_offset_gain(float offset, float gain)
+{
+    uint8_t *offset_ptr = (uint8_t *)&offset;
+    uint8_t *gain_ptr = (uint8_t *)&gain;
+    uint8_t cmd1[] = {0x89, 0x04, 0x09, offset_ptr[1], offset_ptr[2], offset_ptr[3], 0x00};
+    uint8_t cmd2[] = {0x89, 0x05, 0x09, gain_ptr[1], gain_ptr[2], gain_ptr[3], 0x00};
+    int returnval = 0;
+    returnval |= this->send_command(cmd1, sizeof(cmd1), nullptr, 8);
+    returnval |= this->send_command(cmd2, sizeof(cmd2), nullptr, 8);
     return returnval;
 }
