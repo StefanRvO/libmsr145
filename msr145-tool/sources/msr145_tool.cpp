@@ -225,16 +225,26 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
     }
     std::sort(sampletypes.begin(), sampletypes.end(), sampletype_cmp);
     csv << "Timestamp (s)" << seperator;
+    float L1_gain, L1_offset;
     for(auto &type : sampletypes)
     {
         switch(type)
         {
             case pressure: case T_pressure: case humidity:
             case T_humidity: case bat: case ext1: case ext2:
-            case ext3: case ext4: case light:
+            case ext3: case ext4:
             {
                 std::string type_str, unit_str;
                 get_type_str(type, type_str, unit_str);
+                csv << type_str << " (" << unit_str << ")" << seperator;
+                break;
+            }
+            case light:
+            {
+                std::string type_str, unit_str;
+                get_type_str(type, type_str, unit_str);
+                unit_str = get_L1_unit_str();
+                get_L1_offset_gain(&L1_offset, &L1_gain);
                 csv << type_str << " (" << unit_str << ")" << seperator;
                 break;
             }
@@ -275,7 +285,10 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
                     placement++;
                     csv << seperator;
                 }
-                csv << convert_to_unit(sample.type, sample.value);
+                if(sample.type == light)
+                    csv << L1_offset + convert_to_unit(sample.type, sample.value, L1_gain);
+                else
+                    csv << convert_to_unit(sample.type, sample.value);
                 break;
             default:
                 break;
@@ -498,9 +511,18 @@ std::string MSRTool::get_sensor_str(sampletype type, uint16_t value)
     std::stringstream ret_str;
     std::string type_str, unit_str;
     get_type_str(type, type_str, unit_str);
+    if(type == sampletype::light) unit_str = get_L1_unit_str();
     ret_str << "\t" << type_str << " (" << unit_str << "):";
     while(ret_str.str().size() < 30) ret_str << " ";
-    ret_str << std::fixed << std::setprecision(2) << convert_to_unit(type, value);
+    if(type == sampletype::light)
+    {
+        float offset, gain;
+        get_L1_offset_gain(&offset, &gain);
+        ret_str << std::fixed << std::setprecision(2) << offset + convert_to_unit(type, gain);
+    }
+    else
+        ret_str << std::fixed << std::setprecision(2) << convert_to_unit(type, value);
+
     ret_str << std::endl;
 
     return ret_str.str();
@@ -588,9 +610,9 @@ void MSRTool::set_calibrationpoints(active_calibrations::active_calibrations typ
 
 }
 
-uint16_t MSRTool::convert_from_unit(sampletype type, uint16_t value)
+uint16_t MSRTool::convert_from_unit(sampletype type, uint16_t value, float conversion_factor)
 {
-    auto returnval = value/convert_to_unit(type, 1);
+    auto returnval = value/convert_to_unit(type, 1, conversion_factor);
     return returnval;
 }
 
