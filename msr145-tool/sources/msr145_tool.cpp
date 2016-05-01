@@ -42,8 +42,9 @@ void MSRTool::print_sensors()
     update_sensors();
     auto sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
+    {
         std::cout << get_sensor_str(sensor_to_poll[i], sensor_readings[i]);
-
+    }
 }
 void MSRTool::print_status()
 {
@@ -506,7 +507,7 @@ std::string MSRTool::get_start_settings_str()
     return ret_str.str();
 }
 
-std::string MSRTool::get_sensor_str(sampletype type, uint16_t value)
+std::string MSRTool::get_sensor_str(sampletype type, int16_t value)
 {
     std::stringstream ret_str;
     std::string type_str, unit_str;
@@ -518,7 +519,7 @@ std::string MSRTool::get_sensor_str(sampletype type, uint16_t value)
     {
         float offset, gain;
         get_L1_offset_gain(&offset, &gain);
-        ret_str << std::fixed << std::setprecision(2) << offset + convert_to_unit(type, gain);
+        ret_str << std::fixed << std::setprecision(2) << offset + convert_to_unit(type, value, gain);
     }
     else
         ret_str << std::fixed << std::setprecision(2) << convert_to_unit(type, value);
@@ -528,9 +529,9 @@ std::string MSRTool::get_sensor_str(sampletype type, uint16_t value)
     return ret_str.str();
 }
 
-float MSRTool::convert_to_unit(sampletype type, uint16_t value, float conversion_factor)
+float MSRTool::convert_to_unit(sampletype type, int16_t value, float conversion_factor)
 {
-    if(conversion_factor != 0) return value / conversion_factor;
+    if(conversion_factor != 0) return value * conversion_factor;
     switch(type)
     {
         case pressure:
@@ -610,7 +611,7 @@ void MSRTool::set_calibrationpoints(active_calibrations::active_calibrations typ
 
 }
 
-uint16_t MSRTool::convert_from_unit(sampletype type, uint16_t value, float conversion_factor)
+int16_t MSRTool::convert_from_unit(sampletype type, int16_t value, float conversion_factor)
 {
     auto returnval = value/convert_to_unit(type, 1, conversion_factor);
     return returnval;

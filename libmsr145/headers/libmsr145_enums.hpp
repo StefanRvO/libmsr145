@@ -64,14 +64,14 @@ enum sampletype
     T_pressure = 0x1,
     humidity = 0x5,
     T_humidity = 0x6,
+    ext1 = 0x7,
     light = 0x9,
+    ext2 = 0xA,
+    ext3 = 0xB,
+    ext4 = 0xC,
     bat = 0xE,
-    ext1 = 0xA,
-    ext2 = 0xB,
-    ext3 = 0xC,
-    ext4 = 0x7,
     timestamp = 0xF,
-    unknown1 = 0x0D, //may be marker??
+    unknown1 = 0xD, //may be marker??
     end = 0xFFFF,
     none = 0x55, //Just a placeholder for none for use in getSensorData
 };

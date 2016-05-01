@@ -263,7 +263,7 @@ std::vector<std::pair<std::vector<uint8_t>, uint64_t> > MSR_Reader::get_raw_reco
         this->send_command(fetch_command, sizeof(fetch_command), response, response_size);
         uint16_t start_pos;
         if(i == 0)
-        { //in the first chunk, the first 6 * 16 bytes are some kind of preample, which counts from 0 to 0xF
+        { //in the first chunk, the first 6 * 15 bytes are some kind of preample, which counts from 0 to 0xF
           //I don't really know what it means yet
           start_pos = 0 +9 + 2 + 6 * 0xF;
         }
@@ -338,6 +338,7 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
         for(size_t i = 0; i < rawdata.size(); i += 4)
         {
             auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
+            printf("0x%08x\n",cur_sample.rawsample);
             if(cur_sample.type == sampletype::end) break;
             if(cur_sample.type == sampletype::timestamp) continue;
             samples.push_back(cur_sample);
@@ -348,8 +349,6 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
 
 sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
 {   //convert the 4 bytes pointed to by sample_ptr into the sample struct
-    //the last 3 bytes are the sample data. however, not all types use all the bytes
-    //some part of it is used for something else.
     sample this_sample;
     this_sample.type = (sampletype)(sample_ptr[1] >> 4);
     this_sample.rawsample = (sample_ptr[0] << 24) +(sample_ptr[1] << 16) + (sample_ptr[2] << 8) + sample_ptr[3];
@@ -364,8 +363,9 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
         {
             //this is a special type, which is used when the timediff can't fit into the normal sample
             //the time is held in byte 1, 3 and 4, and is in 1/2 seconds.
+            //This is not tested too well, as it takes a very slow sample rate to generate these.
             uint32_t timediff = (sample_ptr[0] << 16) + (sample_ptr[3] << 8) + sample_ptr[2];
-            timediff *= (1 << 16); //the unit of total_time is 1/512 seconds
+            timediff *= (1 << 8); //the unit of total_time is 1/512 seconds
             *total_time += timediff;
             break;
         }
@@ -410,9 +410,9 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
     return this_sample;
 }
 
-std::vector<uint16_t> MSR_Reader::get_sensor_data(std::vector<sampletype> &types)
+std::vector<int16_t> MSR_Reader::get_sensor_data(std::vector<sampletype> &types)
 {
-    std::vector<uint16_t> return_vec;
+    std::vector<int16_t> return_vec;
     size_t response_size = 8;
     uint8_t *response = new uint8_t[response_size];
     for(size_t i = 0; i < types.size(); i += 3)

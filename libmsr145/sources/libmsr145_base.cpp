@@ -88,7 +88,7 @@ int MSR_Base::send_command(uint8_t *command, size_t command_length,
 
     //printf("RECIEVE: ");    for(size_t i = 0; i < out_length; i++) printf("%02X ", out[i]); printf("\n\n");
     if(out_length && (out[0] & 0x20) ) returncode = 1; // if response hav   e 0x20 set, it means error (normaly because it didn't have time to respond).
-    if(out_length && (out[0] == 0x00) ) assert(false); //this should not happen.
+    //if(out_length > 2 && (out[0] == 0x00) &&  ) assert(false); //this should not happen.
     if(selfalloced) delete[] out;
     return returncode;
 }

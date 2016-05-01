@@ -86,7 +86,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual struct tm get_end_time();
         virtual std::vector<rec_entry> get_rec_list(size_t max_num = 0);
         virtual std::vector<sample> get_samples(rec_entry record);
-        virtual std::vector<uint16_t> get_sensor_data(std::vector<sampletype> &types);
+        virtual std::vector<int16_t> get_sensor_data(std::vector<sampletype> &types);
         virtual uint32_t get_timer_interval(uint8_t t);
         virtual void get_active_measurements(uint8_t t, uint8_t *measurements, bool *blink);
         virtual void get_start_setting(bool *bufferon, startcondition *start);
