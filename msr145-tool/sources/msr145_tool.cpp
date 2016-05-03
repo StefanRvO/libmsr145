@@ -30,9 +30,8 @@ bool sample_cmp(sample &s1, sample &s2)
 }
 
 
-void MSRTool::print_sensors()
+void MSRTool::print_sensors(std::vector<sampletype> sensor_to_poll)
 {
-    std::vector<sampletype> sensor_to_poll;
     sensor_to_poll.push_back(sampletype::pressure);
     sensor_to_poll.push_back(sampletype::T_pressure);
     sensor_to_poll.push_back(sampletype::humidity);

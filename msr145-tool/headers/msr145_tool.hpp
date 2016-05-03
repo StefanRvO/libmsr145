@@ -51,7 +51,7 @@ class MSRTool : public MSRDevice
         using MSRDevice::set_time;
         virtual void set_time(std::string timestr);
         virtual void set_limit(sampletype type, float limit1, float limit2, limit_setting record_limit, limit_setting alarm_limit);
-        virtual void print_sensors();
+        virtual void print_sensors(std::vector<sampletype> sensor_to_poll);
         using MSRDevice::set_limit;
     private:
 };

@@ -38,11 +38,12 @@ options_handler::options_handler()
         ("extract,X", po::value<uint32_t>(),     "extract a recording from the device, the record number is given as argument")
         ("seperator", po::value<std::string>(), "The seperator used when extracting")
         ("outfile,o", po::value<std::string>(), "The file extracted to, default is stdout")
-        ("pressure",  po::value<std::vector<float> >()->multitoken(), "Record pressure. Arguments are intervals (--start required)")
-        ("light",  po::value<std::vector<float> >()->multitoken(), "Record light level. Arguments are intervals (--start required)")
-        ("humidity",  po::value<std::vector<float> >()->multitoken(), "Record humidity. Arguments are intervals(--start required)")
-        ("battery",  po::value<std::vector<float> >()->multitoken(), "Record battery. Arguments are intervals(--start required)")
-        ("blink",  po::value<std::vector<float> >()->multitoken(), "Blink blue led. Arguments are intervals(--start required)")
+        ("pressure",  po::value<std::vector<float> >()->multitoken(), "Record pressure. Arguments are intervals (--setsampling required)")
+        ("light",  po::value<std::vector<float> >()->multitoken(), "Record light level. Arguments are intervals (--setsampling required)")
+        ("humidity",  po::value<std::vector<float> >()->multitoken(), "Record humidity. Arguments are intervals (--setsampling required)")
+        ("battery",  po::value<std::vector<float> >()->multitoken(), "Record battery. Arguments are intervals (--setsampling required)")
+        ("blink",  po::value<std::vector<float> >()->multitoken(), "Blink blue led. Arguments are intervals (--setsampling required)")
+        ("setsampling", "Set the sample rates for the different samples")
         ("setname", po::value<std::string>(), "Set the name of the device")
         ("setcalibdate", po::value<std::vector<uint16_t> >()->multitoken(), "Set the calibration date. Give three arguments, year, month, day")
         ("setcalibname", po::value<std::string>(), "Set calibration name")
@@ -51,13 +52,13 @@ options_handler::options_handler()
         ("calib_temp_T", po::value<std::vector<float> >()->multitoken(), "set calibration settings for temperature (T sensor) (somewhat buggy)")
         ("settime", po::value<std::string>()->implicit_value(""), "Set the device time. If no argument is given, the time is set to current time.")
         ("setlimit", "Set a limit setting. Requires additional arguments for setting the actual limit")
-        ("limittype", po::value<std::string>(), "Which type of limit to set. Could be '(L)light, (p)pressure', '(T_p)temp_pressure', '(RH)humidity' (humidity limits may be buggy) or (T_RH)temp_humidity")
+        ("limittype", po::value<std::string>(), "Which type of limit to set. Could be '(L)light', '(p)pressure', '(T_p)temp_pressure', '(RH)humidity' (humidity limits may be buggy) or '(T_RH)temp_humidity'")
         ("alarmlimit", po::value<std::string>(), "Set an alarm limit, types are: 'none(default), 'S<L1', 'S>L1', 'L1<S<L2' and 'S<L1||S>L2'")
         ("recordlimit", po::value<std::string>(), "Set an record limit, types are: 'none(default), 'S<L2', 'S>L2', 'L1<S<L2', 'S<L1||S>L2', 'START>L1,STOP<L2' and START<L1,STOP>L2")
         ("limit1", po::value<float>(), "sets L1 for the given type, 0 is default")
         ("limit2", po::value<float>(), "sets L2 for the given type, 0 is default")
         ("clearlimits", "clear all limits")
-        ("getsensors", "get the newest reading from all the sensors.")
+        ("getsensors", po::value<std::vector<std::string> >()->multitoken(), "get the newest reading from the sensors. Arguments are '(L)light', '(p)pressure', '(T_p)temp_pressure', '(RH)humidity', '(T_RH)temp_humidity' or B(battery)")
         ("set_light_unit", po::value<std::string>(), "Set the name of the unit for the light sensor")
         ;
 }
@@ -93,7 +94,7 @@ int options_handler::handle_command(po::variables_map &vm, MSRTool *msr)
     }
     if(vm.count("getsensors"))
     {
-        msr->print_sensors();
+        handle_get_sensors(vm, *msr);
     }
     if(vm.count("set_light_unit"))
     {
@@ -123,7 +124,7 @@ int options_handler::handle_command(po::variables_map &vm, MSRTool *msr)
     }
     if(vm.count("format"))
     {
-        std::cout << "Formating the memory. You got 5 seconds to cancel, else i will proceed." << std::endl;
+        std::cout << "Formating the memory. You got 5 seconds to cancel, else I will proceed!" << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
         msr->format_memory();
     }
@@ -178,6 +179,10 @@ int options_handler::handle_command(po::variables_map &vm, MSRTool *msr)
     if(vm.count("clearlimits"))
     {
         msr->reset_limits();
+    }
+    if(vm.count("setsampling"))
+    {
+        handle_sampling_args(vm, *msr);
     }
     if(vm.count("start"))
     {   //should be last arg to check
@@ -256,6 +261,31 @@ limit_setting options_handler::parse_recording_limit(__attribute__((unused))std:
     return setting;
 }
 
+void options_handler::handle_get_sensors(po::variables_map &vm, MSRTool &msr)
+{
+    auto strings = vm["getsensors"].as<std::vector<std::string> >();
+    std::vector<sampletype> sensor_to_poll;
+    for(auto string : strings)
+    {
+        if(string == "L" || string == "light")
+            sensor_to_poll.push_back(sampletype::light);
+        else if(string == "p" || string == "pressure")
+            sensor_to_poll.push_back(sampletype::pressure);
+        else if(string == "T_p" || string == "temp_pressure")
+            sensor_to_poll.push_back(sampletype::T_pressure);
+        else if(string == "RH" || string == "humidity")
+            sensor_to_poll.push_back(sampletype::humidity);
+        else if(string == "T_RH" || string == "temp_humidity")
+            sensor_to_poll.push_back(sampletype::T_humidity);
+        else if(string == "B" || string == "battery")
+            sensor_to_poll.push_back(sampletype::bat);
+        else
+            std::cerr << "Invalid sampletype selected" << std::endl;
+    }
+    if(sensor_to_poll.size())
+        msr.print_sensors(sensor_to_poll);
+}
+
 int options_handler::handle_extract_args(po::variables_map &vm, MSRTool &msr)
 {
     std::string seperator = ",";
@@ -274,7 +304,7 @@ int options_handler::handle_extract_args(po::variables_map &vm, MSRTool &msr)
     return 0;
 }
 
-int options_handler::handle_start_args(po::variables_map &vm, MSRTool &msr)
+void options_handler::handle_sampling_args(po::variables_map &vm, MSRTool &msr)
 {
     if(vm.count("pressure") || vm.count("humidity") || vm.count("battery") || vm.count("blink") || vm.count("light"))
     {   //recording options
@@ -306,6 +336,10 @@ int options_handler::handle_start_args(po::variables_map &vm, MSRTool &msr)
         }
         msr.set_measurement_and_timers(interval_typelist);
     }
+}
+
+int options_handler::handle_start_args(po::variables_map &vm, MSRTool &msr)
+{
     std::string starttime_str;
     std::string stoptime_str;
     bool ringbuff = vm.count("ringbuffer");
