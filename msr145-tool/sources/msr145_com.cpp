@@ -10,6 +10,7 @@
 #include "options_handler.hpp"
 #include <boost/tokenizer.hpp>
 #include <boost/bind.hpp>
+#include <boost/filesystem.hpp>
 std::vector<std::string> tokenize(const std::string& input)
 {
   typedef boost::escaped_list_separator<char> separator_type;
@@ -33,6 +34,10 @@ int main(__attribute__((unused))int argc, __attribute__((unused)) char const *ar
     try
     {
         //open the msr.
+        if(!boost::filesystem::exists(argv[1]))
+        {
+            throw po::error("The device don't exists!");
+        }
         MSRTool msr(argv[1]);
         while(std::getline(std::cin, command))
         {

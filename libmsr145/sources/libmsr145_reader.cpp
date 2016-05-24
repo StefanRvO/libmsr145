@@ -77,7 +77,7 @@ rec_entry MSR_Reader::create_rec_entry(uint8_t *response_ptr, uint16_t start_add
     entry.time.tm_min = 0;
     entry.time.tm_sec = entry_time_seconds;
     entry.time.tm_isdst = -1;
-    mktime(&(entry.time));
+    timegm(&(entry.time));
     entry.isRecording = active;
     return entry;
 }
@@ -338,7 +338,7 @@ std::vector<sample> MSR_Reader::get_samples(rec_entry record)
         for(size_t i = 0; i < rawdata.size(); i += 4)
         {
             auto cur_sample = convert_to_sample(rawdata.data() + i, &timestamp);
-            printf("0x%08x\n",cur_sample.rawsample);
+            //printf("0x%08x\n",cur_sample.rawsample);
             if(cur_sample.type == sampletype::end) break;
             if(cur_sample.type == sampletype::timestamp) continue;
             samples.push_back(cur_sample);
@@ -399,7 +399,7 @@ sample MSR_Reader::convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time)
         default:
             //printf("Unknown type: %02X\t raw: %08X, time: %lu\n", this_sample.type, this_sample.rawsample, *total_time);
             this_sample.value = (sample_ptr[3] << 8) + sample_ptr[2];
-            printf("%02X\n", this_sample.type);
+            //printf("%02X\n", this_sample.type);
             break;
         case end:
             break;

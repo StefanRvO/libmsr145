@@ -32,12 +32,6 @@ bool sample_cmp(sample &s1, sample &s2)
 
 void MSRTool::print_sensors(std::vector<sampletype> sensor_to_poll)
 {
-    sensor_to_poll.push_back(sampletype::pressure);
-    sensor_to_poll.push_back(sampletype::T_pressure);
-    sensor_to_poll.push_back(sampletype::humidity);
-    sensor_to_poll.push_back(sampletype::T_humidity);
-    sensor_to_poll.push_back(sampletype::bat);
-    sensor_to_poll.push_back(sampletype::light);
     update_sensors();
     auto sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
@@ -49,15 +43,15 @@ void MSRTool::print_status()
 {
     update_sensors();
     std::cout << "Device Status:" << std::endl << std::endl;
-    std::cout << "Serial Number:\t " << get_serial() << std::endl;
-    std::cout << "Firmware Version: " << get_firmware_version_str() << std::endl;
-    std::cout << "Device Name:\t " << get_name() << std::endl;
-    std::cout << "Device time:\t " << get_device_time_str() << std::endl;
-    std::cout << "Device is recording:\t " << is_recording() << std::endl;
+    std::cout << "Serial Number:\t\t" << get_serial() << std::endl;
+    std::cout << "Firmware Version:\t" << get_firmware_version_str() << std::endl;
+    std::cout << "Device Name:\t\t" << get_name() << std::endl;
+    std::cout << "Device time:\t\t" << get_device_time_str() << std::endl;
+    std::cout << "Device is recording:\t" << is_recording() << std::endl;
     bool marker_on, alarm_confirm_on;
     get_marker_setting(&marker_on, &alarm_confirm_on);
     std::cout << "Marker:\t\t\t" << marker_on << std::endl;
-    std::cout << "Alarm confirm:\t" <<  alarm_confirm_on << std::endl;
+    std::cout << "Alarm confirm:\t\t" <<  alarm_confirm_on << std::endl;
     std::cout << "Sampling intervals:" << std::endl;
     std::cout << get_interval_string() << std::endl;
     std::cout << "Current sensor measurements:" << std::endl;
@@ -67,7 +61,7 @@ void MSRTool::print_status()
     sensor_to_poll.push_back(sampletype::humidity);
     sensor_to_poll.push_back(sampletype::T_humidity);
     sensor_to_poll.push_back(sampletype::bat);
-    sensor_to_poll.push_back(sampletype::light);
+    if(light_sensor) sensor_to_poll.push_back(sampletype::light);
     auto sensor_readings = get_sensor_data(sensor_to_poll);
     for(uint8_t i = 0; i < sensor_readings.size(); i++)
         std::cout << get_sensor_str(sensor_to_poll[i], sensor_readings[i]);
@@ -181,7 +175,7 @@ void MSRTool::list_recordings()
     auto rec_list = get_rec_list();
     char *date_str = new char[100];
     std::cout << "Recordings on device:\n";
-    std::cout << "Number:\t\t\tDate:\t\t\tPage Length:\n\n";
+    std::cout << "Number:\t\t\tDate:\t\t\tNumber of pages:\n\n";
     size_t i = 0;
     for(auto &rec : rec_list)
     {

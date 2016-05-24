@@ -1,9 +1,15 @@
 #include "options_handler.hpp"
+#include <boost/filesystem.hpp>
 int main(int argc, char const **argv) {
     options_handler o_handler;
     try
     {
         //open the msr.
+        //open the msr.
+        if(!boost::filesystem::exists(argv[1]))
+        {
+            throw po::error("The device don't exists!");
+        }
         MSRTool msr(argv[1]);
         try
         {

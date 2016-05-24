@@ -165,51 +165,6 @@ void MSR_Base::set_baud(uint32_t baudrate)
     this->port->set_option(serial_port_base::baud_rate( baudrate ));
 }
 
-void MSR_Base::update_sensors()
-{
-
-
-    uint8_t command1[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
-    this->send_command(command1, sizeof(command1), nullptr, 8);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-}
-
-void MSR_Base::format_memory()
-{
-    stop_recording(); //stop current recording before format.
-    uint16_t start_address = 0x0000;
-    uint16_t end_address = 0x03FF;
-    uint8_t erase_cmd[] = {0x8A, 0x06, 0x00,
-        0x00 /*adress lsb*/, 0x00 /*address msb*/,
-        0x5A, 0xA5};
-    uint8_t start_cmd1[] = {0x8A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    this->send_command(start_cmd1, sizeof(start_cmd1), nullptr, 8);
-
-    uint8_t confirm_command[] = {0x8A, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00};
-    uint8_t *returnval = new uint8_t[8];
-    for(uint16_t addr = start_address; addr <= end_address; addr++)
-    {
-        erase_cmd[3] = addr & 0xFF;
-        erase_cmd[4] = addr >> 8;
-        bool success = false;
-        while(!success)
-            if(this->send_command(erase_cmd, sizeof(erase_cmd), returnval, 8) == 0)
-                success = true;
-        do
-        {
-            this->send_command(confirm_command, sizeof(confirm_command), returnval, 8);
-        } while(returnval[1] != 0xBC);
-    }
-    delete[] returnval;
-}
-
-void MSR_Base::stop_recording()
-{
-    if(!(this->is_recording())) return;
-    uint8_t stop_command[] = {0x86, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    this->send_command(stop_command, sizeof(stop_command), nullptr, 8);
-}
 
 bool MSR_Base::is_recording()
 {
@@ -238,6 +193,8 @@ void MSR_Base::get_calibrationdata(calibration_type::calibration_type type, uint
 
     delete[] response;
 }
+
+
 std::string MSR_Base::get_L1_unit_str()
 {
     uint8_t get[] = {0x88, 0x03, 0x09, 0x00, 0x00, 0x00, 0x00};

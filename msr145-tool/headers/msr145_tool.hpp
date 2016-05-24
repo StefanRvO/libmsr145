@@ -16,12 +16,15 @@ typedef std::pair<float, std::vector<active_measurement::active_measurement> > m
 
 class MSRTool : public MSRDevice
 {
+    private:
+        bool light_sensor = false;
     public:
         MSRTool(std::string _portname) : MSR_Base(_portname), MSRDevice(_portname)
             {}
         virtual ~MSRTool()
             {}
         virtual void print_status();
+        virtual void set_lightsensor() { light_sensor = true; }
         using MSR_Writer::start_recording;
         virtual void start_recording(std::string starttime_str, std::string stoptime_str, bool ringbuff);
         virtual void start_recording(startcondition start_option, bool ringbuff); //only to use for push options

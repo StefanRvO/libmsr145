@@ -32,21 +32,19 @@ class MSR_Base
         MSR_Base(std::string _portname);
         virtual ~MSR_Base();
         virtual void set_baud(uint32_t baudrate);
-        virtual void update_sensors(); //not really sure which class to put this in.
-        virtual void format_memory();
-        virtual void stop_recording();
         virtual bool is_recording();
+        virtual std::string get_L1_unit_str();
+        virtual void get_L1_offset_gain(float *offset, float *gain);
         virtual void get_calibrationdata(calibration_type::calibration_type type, uint16_t *point_1_target, uint16_t *point_1_actual,
             uint16_t *point_2_target, uint16_t *point_2_actual); //unfortunately, we need to place this here, as it's needed in the writer
-    public: //protected:
         virtual int send_command(uint8_t *command, size_t command_length, uint8_t *out, size_t out_length);
+
+    protected:
         virtual void send_raw(uint8_t * command, size_t command_length, uint8_t *out, size_t out_length);
         virtual uint8_t calc_chksum(uint8_t *data, size_t length);
         virtual int send_with_timeout(uint8_t *command, size_t command_length,
                                     uint8_t *out, size_t out_length, boost::posix_time::time_duration time_out);
 
-        virtual std::string get_L1_unit_str();
-        virtual void get_L1_offset_gain(float *offset, float *gain);
 
 };
 
@@ -54,6 +52,10 @@ class MSR_Writer : virtual public MSR_Base
 {
     public:
         MSR_Writer(std::string _portname) : MSR_Base(_portname) {};
+        virtual void format_memory();
+        virtual void stop_recording();
+
+        virtual void update_sensors(); //not really sure which class to put this in.
         virtual int set_names_and_calibration_date(std::string deviceName, std::string calibrationName,
             uint8_t year, uint8_t month, uint8_t day, uint8_t active_calib);
 
@@ -68,9 +70,11 @@ class MSR_Writer : virtual public MSR_Base
         virtual int set_marker_settings(bool marker_on, bool alarm_confirm_on);
         virtual int set_calibrationdata(calibration_type::calibration_type type, uint16_t point_1_target, uint16_t point_1_actual,
             uint16_t point_2_target, uint16_t point_2_actual);
-        virtual void insert_time_in_command(struct tm *timeset, uint8_t *command);
         virtual int set_L1_unit(std::string unit);
         virtual int set_L1_offset_gain(float offset, float gain);
+    protected:
+        virtual void insert_time_in_command(struct tm *timeset, uint8_t *command);
+
 };
 
 class MSR_Reader : virtual public MSR_Base
@@ -95,17 +99,18 @@ class MSR_Reader : virtual public MSR_Base
             uint8_t *alarm_settings, uint16_t *limit1, uint16_t *limit2);
         virtual void convert_to_tm(uint8_t *response_ptr, struct tm * time_s);
         virtual void get_marker_setting(bool *marker_on, bool *alarm_confirm_on);
+        virtual std::string get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *active_calib);
+        virtual void get_firmware_version(int *major, int *minor);
+    private:
+        virtual std::vector<std::pair<std::vector<uint8_t>, uint64_t> > get_raw_recording(rec_entry record);
+        virtual sample convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time);
+        virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active);
+        virtual uint64_t get_page_timestamp(uint8_t *response);
         virtual void get_live_data(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             uint16_t cur_addr, bool isFirstPage);
         virtual void add_raw_samples(std::vector<std::pair<std::vector<uint8_t>, uint64_t> > &sample_pages,
             bool &end, uint8_t *response, size_t response_size, uint16_t start_pos, bool live, uint16_t page_num, uint16_t cur_addr);
-        virtual uint64_t get_page_timestamp(uint8_t *response);
-        virtual std::string get_calibration_name(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *active_calib);
-        virtual void get_firmware_version(int *major, int *minor);
-    protected:
-        virtual std::vector<std::pair<std::vector<uint8_t>, uint64_t> > get_raw_recording(rec_entry record);
-        virtual sample convert_to_sample(uint8_t *sample_ptr, uint64_t *total_time);
-        virtual rec_entry create_rec_entry(uint8_t *response_ptr, uint16_t start_addr, uint16_t end_addr, bool active);
+
 };
 
 class MSRDevice : public MSR_Writer, public MSR_Reader

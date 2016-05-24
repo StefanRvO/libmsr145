@@ -58,6 +58,7 @@ options_handler::options_handler()
         ("limit1", po::value<float>(), "sets L1 for the given type, 0 is default")
         ("limit2", po::value<float>(), "sets L2 for the given type, 0 is default")
         ("clearlimits", "clear all limits")
+        ("light_sensor", "Tell the driver that the device contains a light sensor.")
         ("getsensors", po::value<std::vector<std::string> >()->multitoken(), "get the newest reading from the sensors. Arguments are '(L)light', '(p)pressure', '(T_p)temp_pressure', '(RH)humidity', '(T_RH)temp_humidity' or B(battery)")
         ("set_light_unit", po::value<std::string>(), "Set the name of the unit for the light sensor")
         ;
@@ -82,12 +83,17 @@ int options_handler::handle_command(po::variables_map &vm, MSRTool *msr)
     if(vm.count("help"))
     {
         std::cout << std::endl << "Command line tool for interfacing with the MSR145" << std::endl
+        << "First arguments should be path to the serial port." << std::endl
         << *desc << std::endl;
 
         std::cout << "\nFormat for time is YYYY:MM:DD--HH:MM:SS\n";
         return 0;
     }
     po::notify(vm);
+    if(vm.count("light_sensor"))
+    {
+        msr->set_lightsensor();
+    }
     if(vm.count("status"))
     {
         msr->print_status();
