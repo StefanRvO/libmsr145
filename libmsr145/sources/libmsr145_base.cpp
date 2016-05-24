@@ -15,6 +15,7 @@
 #include <thread> //sleep_for
 #include <boost/optional.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/algorithm/string.hpp>
 using namespace boost::asio;
 using namespace boost::posix_time;
 
@@ -204,6 +205,7 @@ std::string MSR_Base::get_L1_unit_str()
     for(int i = 3; i <= 6; i++)
         ret_str += response[i];
     delete[] response;
+    boost::trim(ret_str);
     return ret_str;
 }
 
