@@ -512,10 +512,10 @@ std::string MSRTool::get_sensor_str(sampletype type, int16_t value)
     {
         float offset, gain;
         get_L1_offset_gain(&offset, &gain);
-        ret_str << std::fixed << std::setprecision(2) << offset + convert_to_unit(type, value, gain);
+        ret_str << std::fixed << std::setprecision(10) << offset + convert_to_unit(type, value, gain);
     }
     else
-        ret_str << std::fixed << std::setprecision(2) << convert_to_unit(type, value);
+        ret_str << std::fixed << std::setprecision(10) << convert_to_unit(type, value);
 
     ret_str << std::endl;
 
