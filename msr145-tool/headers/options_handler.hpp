@@ -25,15 +25,16 @@ class options_handler
         void handle_get_sensors(po::variables_map &vm, MSRTool &msr);
         limit_setting parse_recording_limit(std::string limit_str);
         bool measure_interval_pair_cmp(measure_interval_pair &p1, measure_interval_pair &p2);
-        int handle_command(po::variables_map &vm, MSRTool *msr);
-
+        int handle_command(po::variables_map &vm, MSRTool *&msr);
+        po::positional_options_description p;
+        bool device_required;
     public:
         po::options_description *desc;
-        int handle_args(int argc, char const **argv, MSRTool *msr);
+        int handle_args(int argc, char const **argv, MSRTool *&msr);
 
-        int handle_tokens(std::vector<std::string> &tokens, MSRTool *msr);
+        int handle_tokens(std::vector<std::string> &tokens, MSRTool *&msr);
 
-        options_handler();
+        options_handler(bool _device_required = false);
         ~options_handler();
 
 };

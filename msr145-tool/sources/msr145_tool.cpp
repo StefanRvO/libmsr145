@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <iomanip>
 
-static const char *timeformat = "%Y:%m:%d--%H:%M:%S";
+static const char *timeformat = "%Y:%m:%dT%H:%M:%S";
 
 bool sampletype_cmp(sampletype &type1, sampletype &type2)
 {
@@ -175,12 +175,12 @@ void MSRTool::list_recordings()
     auto rec_list = get_rec_list();
     char *date_str = new char[100];
     std::cout << "Recordings on device:\n";
-    std::cout << "Number:\t\t\tDate:\t\t\tNumber of pages:\n\n";
+    std::cout << "Number:\t\tDate:\t\t\tNumber of pages:\n\n";
     size_t i = 0;
     for(auto &rec : rec_list)
     {
         strftime(date_str, 100, timeformat, &rec.time);
-        std::cout << i++ << "\t\t\t" << date_str << "\t" << rec.length << std::endl;
+        std::cout << i++ << "\t\t" << date_str << "\t" << rec.length << std::endl;
     }
     delete[] date_str;
 }
@@ -253,6 +253,7 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
     std::unique(samples.begin(), samples.end(), sample_cmp);
     uint64_t last_stamp = 0xFFFFFFFFFFFFFFFF;
     size_t placement = 0;
+    double first_time = samples[0].timestamp;
     for(auto &sample : samples)
     {
         switch(sample.type)
@@ -261,7 +262,6 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
             case T_humidity: case bat: case ext1: case ext2:
             case ext3: case ext4: case light:
 
-                //if(sample.timestamp == 5457) printf("%08X\n", sample.rawsample);
                 if(sample.timestamp != last_stamp)
                 {
                     placement = 0;
@@ -270,7 +270,7 @@ std::string MSRTool::create_csv(std::vector<sample> &samples, std::string &seper
                 if(placement == 0)
                 {
                     csv << std::endl;
-                    csv << sample.timestamp / double( (1 << 9) )  << seperator;
+                    csv << (sample.timestamp - first_time) / double( (1 << 9) )  << seperator;
                     //std::cout << sample.timestamp << std::endl;
                     placement++;
                 }
@@ -543,7 +543,7 @@ float MSRTool::convert_to_unit(sampletype type, int16_t value, float conversion_
             //return in unit of volts. There is a pretty weird conversion factor for some reason.
             //The factor is not really vertified to be "the correct one".
 
-            return value/683.; //not figured out yet
+            return value/682.5; //not figured out yet
         case light:
             return value * 6.5865478515625;
         case ext1: case ext2: case ext3: case ext4:

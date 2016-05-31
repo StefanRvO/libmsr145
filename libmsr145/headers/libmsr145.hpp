@@ -33,8 +33,8 @@ class MSR_Base
         virtual ~MSR_Base();
         virtual void set_baud(uint32_t baudrate);
         virtual bool is_recording();
-        virtual std::string get_L1_unit_str();
-        virtual void get_L1_offset_gain(float *offset, float *gain);
+        virtual std::string get_L1_unit_str();  //unfortunately, we need to place this here, as it's needed in the writer
+        virtual void get_L1_offset_gain(float *offset, float *gain);  //unfortunately, we need to place this here, as it's needed in the writer
         virtual void get_calibrationdata(calibration_type::calibration_type type, uint16_t *point_1_target, uint16_t *point_1_actual,
             uint16_t *point_2_target, uint16_t *point_2_actual); //unfortunately, we need to place this here, as it's needed in the writer
         virtual int send_command(uint8_t *command, size_t command_length, uint8_t *out, size_t out_length);
@@ -55,7 +55,6 @@ class MSR_Writer : virtual public MSR_Base
         virtual void format_memory();
         virtual void stop_recording();
 
-        virtual void update_sensors(); //not really sure which class to put this in.
         virtual int set_names_and_calibration_date(std::string deviceName, std::string calibrationName,
             uint8_t year, uint8_t month, uint8_t day, uint8_t active_calib);
 
@@ -88,6 +87,7 @@ class MSR_Reader : virtual public MSR_Base
         virtual struct tm get_device_time();
         virtual struct tm get_start_time();
         virtual struct tm get_end_time();
+        virtual void update_sensors(); //not really sure which class to put this in.
         virtual std::vector<rec_entry> get_rec_list(size_t max_num = 0);
         virtual std::vector<sample> get_samples(rec_entry record);
         virtual std::vector<int16_t> get_sensor_data(std::vector<sampletype> &types);

@@ -10,6 +10,14 @@
 #include "libmsr145.hpp"
 #include <string>
 #include <iostream>
+#include <thread> //sleep_for
+
+void printbytes(uint8_t *bytes, size_t len)
+{
+    for(size_t i = 0; i < len; i++)
+        printf("%02X ", bytes[i]);
+    printf("\n");
+}
 
 std::string MSR_Reader::get_serial()
 {
@@ -21,6 +29,17 @@ std::string MSR_Reader::get_serial()
     uint64_t serial = (response[3] << 16) + (response[2] << 8) + response[1];
     delete[] response;
     return std::to_string(serial);
+}
+
+
+void MSR_Reader::update_sensors()
+{
+
+
+    uint8_t command1[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
+    this->send_command(command1, sizeof(command1), nullptr, 8);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 void MSR_Reader::convert_to_tm(uint8_t *response_ptr, struct tm *time_s)
@@ -90,13 +109,13 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
     uint8_t *response = new uint8_t[response_size];
     this->send_command(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
+    printbytes(response, response_size);
     uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
     uint16_t start_address = end_address;
     //this command fetches the data at the adress given by byte 4 and 5
     uint16_t first_record_adress; //the adress for the page of the first recording. Checked to make sure we don't loop around.
     uint8_t next_placement_get[] = {0x8B, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00};
-
     bool recording_active = (response[1] & 0x03); //this byte defines if the device is currently recording
     //for the rest of the responses, the size of the response is 10 bytes, so we reallocate response
 
@@ -116,13 +135,11 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
         if(response[1] == 0x01)
         {
             this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
-            //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
-            //printf("\n");
         }
         start_address = (response[8] <<  8) + response[7];
         if(++end_address == 0x2000)
             end_address = 0x0000;
-        rec_entry first_entry = create_rec_entry(response, start_address, end_address, true);
+        rec_entry first_entry = create_rec_entry(response, start_address, end_address, recording_active);
         first_record_adress = first_entry.address;
         rec_adresses.push_back(first_entry);
         start_address--;
@@ -136,7 +153,7 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
     rec_entry new_entry;
     next_placement_get[3] = cur_address & 0xFF;
     next_placement_get[4] = cur_address >> 8;
-    while(cur_address != 0x1FFF && (rec_adresses.size() < max_num || max_num == 0))
+    while((rec_adresses.size() < max_num || max_num == 0))
     {
         this->send_command(next_placement_get, sizeof(next_placement_get), response, response_size);
         //for(uint8_t i = 0; i < 9; i++) printf("%02X ", response[i]);
@@ -421,6 +438,7 @@ std::vector<int16_t> MSR_Reader::get_sensor_data(std::vector<sampletype> &types)
         for(uint8_t j = 0; j < 3; j++)
             if(i + j < types.size() ) typebytes[j] = types[i + j];
         uint8_t fetch_data[] = {0x82, 0x02, typebytes[0], typebytes[1], typebytes[2], 0x00, 0x00};
+        //printbytes(fetch_data, 7);
         this->send_command(fetch_data, sizeof(fetch_data), response, response_size);
 
         for(uint8_t j = 0; j < 3; j++)

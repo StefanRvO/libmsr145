@@ -29,23 +29,30 @@ std::vector<std::string> tokenize(const std::string& input)
 }
 
 int main(__attribute__((unused))int argc, __attribute__((unused)) char const *argv[]) {
-    options_handler o_handler;
+    options_handler o_handler_first(true);
     std::string command;
     try
     {
         //open the msr.
-        if(!boost::filesystem::exists(argv[1]))
+        MSRTool *msr = nullptr;
+        try
         {
-            throw po::error("The device don't exists!");
+            o_handler_first.handle_args(argc, argv, msr);
         }
-        MSRTool msr(argv[1]);
+        catch(po::error &e)
+        {
+            std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+            std::cerr << *(o_handler_first.desc) << std::endl;
+            return COMMAND_LINE_ERROR;
+        }
+        std::cout << msr << std::endl;
+        options_handler o_handler;
         while(std::getline(std::cin, command))
         {
-            std::cout << command << std::endl;
             try
             {
                 auto tokens = tokenize(command);
-                o_handler.handle_tokens(tokens, &msr);
+                o_handler.handle_tokens(tokens, msr);
             }
             catch(po::error &e)
             {

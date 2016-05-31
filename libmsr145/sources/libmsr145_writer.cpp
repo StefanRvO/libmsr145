@@ -11,7 +11,6 @@
 #include <string>
 #include <cstdio>
 #include <iostream>
-#include <thread> //sleep_for
 
 void MSR_Writer::insert_time_in_command(struct tm *timeset, uint8_t *command)
 {
@@ -29,16 +28,6 @@ void MSR_Writer::stop_recording()
     this->send_command(stop_command, sizeof(stop_command), nullptr, 8);
 }
 
-
-void MSR_Writer::update_sensors()
-{
-
-
-    uint8_t command1[] = {0x86, 0x03, 0x00, 0xFF, 0x00, 0x00, 0x00};
-    this->send_command(command1, sizeof(command1), nullptr, 8);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-}
 
 void MSR_Writer::format_memory()
 {

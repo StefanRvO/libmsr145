@@ -19,9 +19,17 @@ options_handler::~options_handler()
     delete desc;
 }
 
-options_handler::options_handler()
+options_handler::options_handler(bool _device_required)
 {
+    device_required = _device_required;
     desc = new po::options_description("Usage");
+    if(device_required == false)
+        desc->add_options()
+        ("device,D", po::value<std::string>(), "Serial device attached to the MSR145");
+    else
+        desc->add_options()
+        ("device,D", po::value<std::string>()->required(), "Serial device attached to the MSR145");
+
     desc->add_options()
         ("help,h", "Print help messages")
         ("stop", "Stop recording samples")
@@ -60,36 +68,45 @@ options_handler::options_handler()
         ("clearlimits", "clear all limits")
         ("light_sensor", "Tell the driver that the device contains a light sensor.")
         ("getsensors", po::value<std::vector<std::string> >()->multitoken(), "get the newest reading from the sensors. Arguments are '(L)light', '(p)pressure', '(T_p)temp_pressure', '(RH)humidity', '(T_RH)temp_humidity' or B(battery)")
-        ("set_light_unit", po::value<std::string>(), "Set the name of the unit for the light sensor")
+        /*("set_light_unit", po::value<std::string>(), "Set the name of the unit for the light sensor")*/
         ;
+        if(device_required)
+            p.add("device", 1);
+
 }
 
-int options_handler::handle_args(int argc, char const **argv, MSRTool *msr)
+int options_handler::handle_args(int argc, char const **argv, MSRTool *&msr)
 {
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, *desc), vm);
+    po::store(po::command_line_parser(argc, argv).options(*desc).positional(p).run(), vm);
     return handle_command(vm, msr);
 }
 
-int options_handler::handle_tokens(std::vector<std::string> &tokens, MSRTool *msr)
+int options_handler::handle_tokens(std::vector<std::string> &tokens, MSRTool *&msr)
 {
     po::variables_map vm;
     po::store(po::command_line_parser(tokens).options(*desc).run(), vm);
     return handle_command(vm, msr);
 }
 
-int options_handler::handle_command(po::variables_map &vm, MSRTool *msr)
+int options_handler::handle_command(po::variables_map &vm, MSRTool *&msr)
 {
     if(vm.count("help"))
     {
-        std::cout << std::endl << "Command line tool for interfacing with the MSR145" << std::endl
-        << "First arguments should be path to the serial port." << std::endl
+        std::cout << std::endl << "Command line tool for communicating with an MSR145" << std::endl
         << *desc << std::endl;
 
-        std::cout << "\nFormat for time is YYYY:MM:DD--HH:MM:SS\n";
+        std::cout << "\nFormat for time is YYYY:MM:DDTHH:MM:SS\n";
         return 0;
     }
     po::notify(vm);
+    if(vm.count("device"))
+    {
+        if(msr)
+            delete msr;
+
+        msr = new MSRTool(vm["device"].as<std::string>());
+    }
     if(vm.count("light_sensor"))
     {
         msr->set_lightsensor();
