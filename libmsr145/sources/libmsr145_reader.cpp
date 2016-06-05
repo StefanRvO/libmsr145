@@ -109,7 +109,7 @@ std::vector<rec_entry> MSR_Reader::get_rec_list(size_t max_num)
     uint8_t *response = new uint8_t[response_size];
     this->send_command(first_placement_get, sizeof(first_placement_get), response, response_size);
     //the address to the first recording is placed in byte 4 and 5 these are least significant first.
-    printbytes(response, response_size);
+    //printbytes(response, response_size);
     uint16_t end_address = (response[4] << 8) + response[3]; //end address of the current entry
     uint16_t cur_address = end_address; //the adress we are going to request in the next command
     uint16_t start_address = end_address;

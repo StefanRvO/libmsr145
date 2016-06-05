@@ -29,7 +29,7 @@ std::vector<std::string> tokenize(const std::string& input)
 }
 
 int main(__attribute__((unused))int argc, __attribute__((unused)) char const *argv[]) {
-    options_handler o_handler_first(true);
+    options_handler o_handler_first(false);
     std::string command;
     try
     {
@@ -45,7 +45,6 @@ int main(__attribute__((unused))int argc, __attribute__((unused)) char const *ar
             std::cerr << *(o_handler_first.desc) << std::endl;
             return COMMAND_LINE_ERROR;
         }
-        std::cout << msr << std::endl;
         options_handler o_handler;
         while(std::getline(std::cin, command))
         {
